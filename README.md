@@ -37,7 +37,7 @@ npm i -g @packet-tools-ai/root   # instala los binarios packet-tools-ai y packet
 packet-tools-ai                  # abre el menú
 ```
 
-El comando pide primero el idioma (**Español** / **English**), lo recuerda en `~/.packet-tools/preferences.json` (por defecto, español) y después abre un menú con tres opciones:
+El comando pide primero el idioma (**Español** / **English**), lo recuerda en `~/.packet-tools/preferences.json` (por defecto, español) y después abre un menú con tres opciones. El menú se maneja con las **flechas** (`↑` / `↓`), se elige con **Enter** y se cancela con `Ctrl+C`; la opción múltiple del MCP se marca con **Espacio** (aparece una `x`), `A` marca todas y **Enter** confirma:
 
 | Opción      | Qué hace                                                                                                                                                                                                 |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -50,8 +50,10 @@ Opciones del instalador:
 - `--web`, `--mcp`, `--desktop`: ejecutan directamente el flujo correspondiente, sin pasar por el menú.
 - `--mcp-server`: arranca el servidor MCP por stdio (bin `packet-tools-mcp`).
 - `--lang es|en`: fuerza el idioma solo en esa ejecución.
+- `--no-color`: desactiva los colores de esa ejecución (también `NO_COLOR=1`).
 - `--help` / `--version`: muestran la ayuda o la versión.
 - `PACKET_TOOLS_LANG=es|en`: variable de entorno equivalente a `--lang`.
+- `PACKET_TOOLS_NO_TUI=1`: fuerza el modo de texto (números + Enter) aunque haya terminal.
 
 Si solo quieres una de las dos piezas, sin menú:
 
@@ -96,13 +98,15 @@ npx -y --package=@packet-tools-ai/root packet-tools-ai
 
 **Paso 4 — Elige una opción del menú:**
 
+Usa `↑` / `↓` para mover el cursor y `Enter` para confirmar. En la lista de agentes del MCP, `Espacio` marca cada uno con una `x`, `A` marca todos y `Enter` confirma la selección.
+
 | Opción | Qué ocurre |
 | --- | --- |
 | **Web** | Descarga `@packet-tools-ai/app`, arranca backend y frontend, y abre `http://localhost:3090`. Los datos quedan en `~/.packet-tools/app`. Se detiene con `Ctrl+C`. |
 | **MCP** | Muestra los agentes detectados, escribe su configuración y deja el servidor listo para usar. |
 | **Desktop** | Abre la página de [Releases](https://github.com/ph0Void/packet-tools-ai/releases) para descargar el instalador de Windows. |
 
-Si prefieres saltarte el menú, usa los atajos: `--web`, `--mcp`, `--desktop`, `--mcp-server`, `--lang es|en`, `--help` y `--version`.
+Si prefieres saltarte el menú, usa los atajos: `--web`, `--mcp`, `--desktop`, `--mcp-server`, `--lang es|en`, `--no-color`, `--help` y `--version`.
 
 **Paso 5 — Inicia sesión** con `admin` / `admin123` y ve a **Configuración** para añadir tu proveedor de IA. Cambia la contraseña si vas a usarlo fuera de tu equipo.
 
@@ -163,7 +167,7 @@ Detalle por cliente (Claude Code, Cursor, Windsurf, LM Studio, OpenCode, VS Code
 ### Verificar la instalación
 
 ```bash
-packet-tools-ai --version                  # 1.2.7
+packet-tools-ai --version                  # 1.3.0
 curl http://localhost:7531/api/health      # {"success":true,...}
 ```
 
@@ -449,7 +453,7 @@ Todas viven en el `.env` de la raíz del monorepo. Plantilla: [`.example.env`](.
 | Variable                   | Descripción                                                                | Valor por defecto               |
 | -------------------------- | -------------------------------------------------------------------------- | ------------------------------- |
 | `NAME`                     | Nombre del proyecto                                                        | `Packet Tools`                  |
-| `VERSION`                  | Versión visible                                                            | `1.2.7`                         |
+| `VERSION`                  | Versión visible                                                            | `1.3.0`                         |
 | `URL_GITHUB`               | URL del repositorio                                                        | `https://github.com/ph0Void/packet-tools-ai` |
 | `SERVER_PORT`              | Puerto del backend                                                         | `7531`                          |
 | `PORT`                     | Puerto del frontend                                                        | `3090`                          |

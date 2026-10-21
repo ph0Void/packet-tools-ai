@@ -1,6 +1,6 @@
 {
   "name": "@packet-tools-ai/root",
-  "version": "1.2.7",
+  "version": "1.3.0",
   "description": "AI-powered multi-agent network automation platform: manage Cisco Packet Tracer, GNS3, and physical devices (SSH, Telnet, Serial) via natural language chat, web terminal, topology workspace, and MCP server for AI coding assistants.",
   "repository": {
     "type": "git",
@@ -41,7 +41,7 @@
     "test-ssh": "dotenv -e .env -- npm run test-ssh --workspace=@packet-tools/server",
     "test-serial": "dotenv -e .env -- npm run test-serial --workspace=@packet-tools/server",
     "test-gns3": "dotenv -e .env -- npm run test-gns3 --workspace=@packet-tools/server",
-    "test:installer": "node scripts/verify-installer.cjs",
+    "test:installer": "node scripts/verify-installer.cjs && node scripts/verify-tui.mjs",
     "postinstall": "node bin/postinstall.mjs"
   },
   "keywords": [

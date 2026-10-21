@@ -9,10 +9,10 @@ TypeScript monorepo with npm workspaces + Turborepo.
 - `packages/app` — `@packet-tools-ai/app`: npm package that assembles the full web app runtime (server + web standalone, no Electron) via `runtime/`; bin `packet-tools-ai-app`; published to npm; detail in `packages/app/README.md`.
 - `packages/desktop` — `@package/desktop`: all-in-one Electron installer (NSIS/AppImage/deb). Detail in `packages/desktop/AGENTS.md`; intentionally no `build` script (turbo never builds it). Code there uses English identifiers and no comments.
 - `packages/mcp` — `@packet-tools-ai/mcp`: MCP (Model Context Protocol) server over stdio and HTTP (/mcp, /sse) exposing the Packet Tools engine (Packet Tracer, GNS3, serial, Telnet, SSH) as tools. Real workspace. Detail in `packages/mcp/README.md`; its `src/`/`scripts/`/`test/` carry no comments (stripped on purpose). `dist/` is committed so `npx -y --package=github:ph0Void/packet-tools-ai packet-tools-mcp` works straight from the git repo (published to npm as `@packet-tools-ai/mcp`; the short form is `npx -y @packet-tools-ai/mcp`).
-- Root package (`@packet-tools-ai/root`): bins `packet-tools-ai`/`packet-tools` (installer menu — Web/MCP/Desktop — in `bin/cli.mjs`) and `packet-tools-mcp` (stdio server); `postinstall` opens the menu with a TTY, prints a banner without one and stays silent in the repo checkout; `bin/config.mjs` centralizes repo URLs (owner `ph0Void`, repo `packet-tools-ai`).
+- Root package (`@packet-tools-ai/root`): bins `packet-tools-ai`/`packet-tools` (installer menu — Web/MCP/Desktop — in `bin/cli.mjs`) and `packet-tools-mcp` (stdio server); `postinstall` opens the menu with a TTY, prints a banner without one and stays silent in the repo checkout; `bin/config.mjs` centralizes repo URLs (owner `ph0Void`, repo `packet-tools-ai`). The menu uses arrow keys + Enter (Space/`A` in the MCP multi-select) when stdout is a TTY, and falls back to numbered lines otherwise; colors are adaptive (truecolor → 256 → 16) and honor `NO_COLOR`/`--no-color`.
 - `extension-packetracer/` — Cisco Packet Tracer extension in plain JavaScript. **Not an npm workspace** (only `packages/*` are); never build it with turbo. Detail in `extension-packetracer/AGENTS.md`.
 - `.agents/skills/` — canonical-format agent skills for repo development (`ai-sdk`, `frontend-design`, `grill-me`, `impeccable`, `vercel-react-best-practices`). **The Packet Tools backend does NOT read them**: its own skills live in the `SkillBase` table; do not confuse them.
-- Public docs: `README.md` and `packages/*/README.md`. The root, `server`, `web`, `desktop` and `app` `package.json` are at **1.2.7**; `mcp` at **1.3.1** (its own UI/extension line) — keep each line aligned before shipping.
+- Public docs: `README.md` and `packages/*/README.md`. The root, `server`, `web`, `desktop` and `app` `package.json` are at **1.3.0**; `mcp` at **1.3.2** (its own UI/extension line) — keep each line aligned before shipping.
 
 ## Commands (root)
 
@@ -25,7 +25,7 @@ All root scripts load the `.env` with `dotenv -e .env --` **except two**: `init`
 | `npm run build-desktop` | full Electron installer (server + standalone web + Node + seeded SQLite); `-- --win/--linux` selects the platform. With `DESKTOP_OBFUSCATE=true` in `.env` it obfuscates backend and frontend to V8 bytecode (bytenode) before packing (detail in `packages/desktop/AGENTS.md`) |
 | `npm run lint` | ESLint of the **web only**; the server has no lint |
 | `npm test` | Vitest of the **server only** (84 suites) |
-| `npm run test:installer` | Verifies the CLI installer (web/mcp/desktop menu, ES/EN); 33 checks |
+| `npm run test:installer` | Verifies the CLI installer (web/mcp/desktop menu, ES/EN, arrow-key TUI); 42 checks |
 | `npm run migrate` / `generate` / `seed` / `studio` / `reset` | Prisma (see below) |
 | `npm run migrate --workspace=@packet-tools/server` | `prisma migrate dev` |
 | `npm run migrate:deploy` (server workspace) | `prisma migrate deploy` (production/Docker) |
@@ -90,7 +90,7 @@ All root scripts load the `.env` with `dotenv -e .env --` **except two**: `init`
 - When a feature is done:
   1. Run verification: `npm run lint` + `npm run build` (plus optional backend or mcp  tests when relevant).
   2. Create a Git commit including the impacted package scope and version tag:
-     - Web / Server / Root: `v1.2.7`
-     - MCP: `v1.3.1`
-     - Example: `git commit -m "feat(server): update auth logic (v1.2.7)"`
+     - Web / Server / Root: `v1.3.0`
+     - MCP: `v1.3.2`
+     - Example: `git commit -m "feat(server): update auth logic (v1.3.0)"`
 ---

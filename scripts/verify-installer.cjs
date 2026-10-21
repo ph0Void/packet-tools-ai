@@ -174,9 +174,12 @@ async function main() {
   fs.mkdirSync(path.join(installedRoot, "bin", "lib"), { recursive: true });
   fs.copyFileSync(postinstallPath, path.join(installedRoot, "bin", "postinstall.mjs"));
   fs.copyFileSync(path.join(root, "bin", "config.mjs"), path.join(installedRoot, "bin", "config.mjs"));
-  fs.copyFileSync(path.join(root, "bin", "lib", "prompt.mjs"), path.join(installedRoot, "bin", "lib", "prompt.mjs"));
-  fs.copyFileSync(path.join(root, "bin", "lib", "i18n.mjs"), path.join(installedRoot, "bin", "lib", "i18n.mjs"));
-  fs.copyFileSync(path.join(root, "bin", "lib", "paths.mjs"), path.join(installedRoot, "bin", "lib", "paths.mjs"));
+  for (const module of ["prompt.mjs", "i18n.mjs", "paths.mjs", "theme.mjs", "banner.mjs", "agents.mjs", "open.mjs"]) {
+    fs.copyFileSync(
+      path.join(root, "bin", "lib", module),
+      path.join(installedRoot, "bin", "lib", module),
+    );
+  }
   fs.writeFileSync(
     path.join(installedRoot, "package.json"),
     `${JSON.stringify({ name: "@packet-tools-ai/root", version: "0.0.0", type: "module" }, null, 2)}\n`,

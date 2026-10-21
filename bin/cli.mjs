@@ -8,9 +8,27 @@ import { fileURLToPath } from "node:url";
 
 import { APP_PACKAGE, DOCS_URL, MCP_NPX_ARGS, RELEASES_URL, ROOT_PACKAGE } from "./config.mjs";
 import { configureAgent, listAgents, resultDetail, resultIcon } from "./lib/agents.mjs";
+import {
+  renderBanner,
+  renderHelp,
+  renderSection,
+} from "./lib/banner.mjs";
 import { getLang, isLang, loadLang, saveLang, setLang, t } from "./lib/i18n.mjs";
 import { openUrl } from "./lib/open.mjs";
-import { askChoice, askMultiSelect, closePrompts } from "./lib/prompt.mjs";
+import { askChoice, askMultiSelect, closePrompts, supportsInteractive } from "./lib/prompt.mjs";
+import {
+  PALETTE,
+  accent,
+  bold,
+  colorLevel,
+  dim,
+  failure,
+  fg,
+  muted,
+  setColorLevel,
+  success,
+  warning,
+} from "./lib/theme.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(here, "..");
@@ -29,26 +47,42 @@ function readVersion() {
   }
 }
 
+function colorSummary() {
+  const level = colorLevel();
+  if (level <= 0) return t("help.color.none");
+  if (level === 1) return t("help.color.basic");
+  if (level === 2) return t("help.color.256");
+  return t("help.color.true");
+}
+
 function helpText() {
-  return [
-    t("help.title"),
-    "",
-    t("help.usage"),
-    `  packet-tools-ai                ${t("help.menu")}`,
-    `  npx -y --package=${ROOT_PACKAGE} packet-tools-ai   ${t("help.noGlobal")}`,
-    `  packet-tools-ai --web          ${t("help.web")}`,
-    `  packet-tools-ai --mcp          ${t("help.mcp")}`,
-    `  packet-tools-ai --desktop      ${t("help.desktop")}`,
-    `  packet-tools-ai --mcp-server   ${t("help.mcpServer")}`,
-    `  packet-tools-ai --lang es|en   ${t("help.lang")}`,
-    `  packet-tools-ai --help         ${t("help.help")}`,
-    `  packet-tools-ai --version      ${t("help.version")}`,
-    "",
-    t("help.langNote", { lang: getLang() }),
-    `MCP: ${MCP_COMMAND_LINE}`,
-    `Web: ${APP_PACKAGE}`,
-    t("help.docs", { url: DOCS_URL }),
-  ].join("\n");
+  const entries = [
+    { title: t("help.usage") },
+    { command: "packet-tools-ai", description: t("help.menu") },
+    {
+      command: `npx -y --package=${ROOT_PACKAGE} packet-tools-ai`,
+      description: t("help.noGlobal"),
+    },
+    { command: "packet-tools-ai --web", description: t("help.web") },
+    { command: "packet-tools-ai --mcp", description: t("help.mcp") },
+    { command: "packet-tools-ai --desktop", description: t("help.desktop") },
+    { command: "packet-tools-ai --mcp-server", description: t("help.mcpServer") },
+    { command: "packet-tools-ai --lang es|en", description: t("help.lang") },
+    { command: "packet-tools-ai --no-color", description: t("help.noColor") },
+    { command: "packet-tools-ai --help", description: t("help.help") },
+    { command: "packet-tools-ai --version", description: t("help.version") },
+  ];
+  return renderHelp({
+    version: readVersion(),
+    entries,
+    footer: [
+      t("help.langNote", { lang: getLang() }),
+      t("help.colorNote", { mode: colorSummary() }),
+      `MCP   ${MCP_COMMAND_LINE}`,
+      `Web   ${APP_PACKAGE}`,
+      t("help.docs", { url: DOCS_URL }),
+    ],
+  });
 }
 
 function spawnInherit(command, args, { shell = false } = {}) {
@@ -85,6 +119,10 @@ function spawnInherit(command, args, { shell = false } = {}) {
       resolve({ code: code ?? SIGNAL_CODES[signal] ?? 1, signal });
     });
   });
+}
+
+function line(text = "") {
+  console.log(text);
 }
 
 async function flowWeb() {
@@ -129,7 +167,19 @@ async function flowMcp() {
   const options = agents.map((agent) => ({
     value: agent.id,
     label: agent.detected ? `${agent.name}${t("mcp.detected")}` : agent.name,
+    hint: agent.detected ? agent.file : `${agent.file} ${t("mcp.willCreate")}`,
   }));
+  process.stdout.write(
+    supportsInteractive()
+      ? renderSection(
+          t("mcp.header"),
+          t("mcp.question.hint", {
+            detected: agents.filter((agent) => agent.detected).length,
+            total: agents.length,
+          }),
+        )
+      : "",
+  );
   const picked = await askMultiSelect(t("mcp.question"), options);
   if (picked === null) {
     console.log(t("menu.cancelled"));
@@ -139,7 +189,8 @@ async function flowMcp() {
   const configured = [];
   for (const agent of agents.filter((item) => picked.includes(item.id))) {
     const result = configureAgent(agent);
-    console.log(`  ${resultIcon(result.status)} ${agent.name}: ${resultDetail(result)} — ${agent.file}`);
+    const painted = result.status === "installed" ? success(resultIcon(result.status)) : result.status === "already" ? warning(resultIcon(result.status)) : failure(resultIcon(result.status));
+    console.log(`  ${painted} ${bold(agent.name)} ${muted("·")} ${resultDetail(result)} ${dim(`— ${agent.file}`)}`);
     if (result.status !== "skipped") configured.push(agent);
   }
   if (configured.length === 0) {
@@ -157,27 +208,31 @@ async function flowMcp() {
 
 async function flowDesktop() {
   console.log("");
-  console.log(t("desktop.download"));
-  console.log(RELEASES_URL);
-  openUrl(RELEASES_URL);
+  line(`${accent("┌")} ${bold(t("desktop.download"))}`);
+  line(`${dim("│")} ${fg(RELEASES_URL, PALETTE.sky)}`);
   if (process.platform === "win32") {
-    console.log(t("desktop.windows"));
+    line(`${dim("│")} ${muted(t("desktop.windows"))}`);
   } else {
-    console.log(t("desktop.other", { platform: process.platform }));
+    line(`${dim("│")} ${muted(t("desktop.other", { platform: process.platform }))}`);
   }
+  line(`${accent("└")}`);
+  openUrl(RELEASES_URL);
   return 0;
 }
+
 
 function flowMcpServer() {
   return spawnInherit(process.execPath, [path.join(here, "packet-tools-mcp.mjs")]);
 }
 
 export async function runMenu() {
+  const version = readVersion();
+  process.stdout.write(renderBanner({ version, showLinks: true }));
   const lang = await askChoice(
     LANGUAGE_QUESTION,
     [
-      { value: "es", label: "Español" },
-      { value: "en", label: "English" },
+      { value: "es", label: "Español", hint: t("menu.lang.es.hint") },
+      { value: "en", label: "English", hint: t("menu.lang.en.hint") },
     ],
     { defaultValue: getLang() },
   );
@@ -188,7 +243,10 @@ export async function runMenu() {
   setLang(lang);
   saveLang(lang);
   console.log("");
-  console.log(t("menu.title", { version: readVersion() }));
+  if (supportsInteractive()) {
+    process.stdout.write(renderSection(t("menu.question"), t("menu.question.hint")));
+    console.log("");
+  }
   const choice = await askChoice(
     t("menu.question"),
     [
@@ -207,7 +265,7 @@ export async function runMenu() {
         label: t("menu.desktop.label"),
         hint: t("menu.desktop.hint"),
       },
-      { value: "exit", label: t("menu.exit.label") },
+      { value: "exit", label: t("menu.exit.label"), hint: t("menu.exit.hint") },
     ],
     { defaultValue: "exit" },
   );
@@ -225,6 +283,10 @@ export async function runMenu() {
 async function main() {
   let args = process.argv.slice(2);
   loadLang();
+  if (args.includes("--no-color") || args.includes("--no-colors")) {
+    setColorLevel(0);
+    args = args.filter((arg) => arg !== "--no-color" && arg !== "--no-colors");
+  }
   const langIndex = args.indexOf("--lang");
   if (langIndex !== -1) {
     const value = String(args[langIndex + 1] ?? "").trim().toLowerCase();
