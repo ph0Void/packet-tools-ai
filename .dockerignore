@@ -1,0 +1,34 @@
+# Dependencias
+node_modules
+**/node_modules
+
+# Builds
+.next
+**/.next
+dist
+**/dist
+.turbo
+**/.turbo
+coverage
+
+# Git
+.git
+.gitignore
+
+# Variables de entorno  
+.env
+.env.*
+!.example.env
+
+# Base de datos SQLite local y archivos subidos
+packages/server/.packet_tool_database.db
+packages/server/uploads
+
+# Editor / sistema
+.vscode
+.idea
+.DS_Store
+*.log
+
+#website
+website/*

@@ -1,0 +1,118 @@
+{
+  "name": "@packet-tools-ai/root",
+  "version": "1.2.7",
+  "description": "AI-powered multi-agent network automation platform: manage Cisco Packet Tracer, GNS3, and physical devices (SSH, Telnet, Serial) via natural language chat, web terminal, topology workspace, and MCP server for AI coding assistants.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ph0Void/packet-tools-ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ph0Void/packet-tools-ai/issues"
+  },
+  "homepage": "https://packet-tools-ai.vercel.app",
+  "private": false,
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "npm@10.8.2",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "dotenv -e .env -- turbo dev --filter=@packet-tools/server --filter=@packet-tools/web",
+    "dev:server": "dotenv -e .env -- turbo dev --filter=@packet-tools/server",
+    "dev:web": "dotenv -e .env -- turbo dev --filter=@packet-tools/web",
+    "dev:mcp": "dotenv -e .env -- turbo dev --filter=@packet-tools-ai/mcp",
+    "init": "cp .example.env .env && npm install",
+    "build": "dotenv -e .env -- turbo build",
+    "build:mcp": "npm run build --workspace=@packet-tools-ai/mcp",
+    "build-desktop": "node packages/desktop/scripts/build.mjs",
+    "prepublishOnly": "npm run build",
+    "lint": "turbo lint",
+    "migrate": "dotenv -e .env -- npm run migrate --workspace=@packet-tools/server",
+    "generate": "dotenv -e .env -- npm run generate --workspace=@packet-tools/server",
+    "reset": "dotenv -e .env -- npm run reset --workspace=@packet-tools/server",
+    "seed": "dotenv -e .env -- npm run seed --workspace=@packet-tools/server",
+    "studio": "dotenv -e .env -- npm run studio --workspace=@packet-tools/server",
+    "test": "dotenv -e .env -- npm run test --workspace=@packet-tools/server",
+    "test-pt": "dotenv -e .env -- npm run test-pt --workspace=@packet-tools/server",
+    "test-terminal": "dotenv -e .env -- npm run test-terminal --workspace=@packet-tools/server",
+    "test-telnet": "dotenv -e .env -- npm run test-telnet --workspace=@packet-tools/server",
+    "test-ssh": "dotenv -e .env -- npm run test-ssh --workspace=@packet-tools/server",
+    "test-serial": "dotenv -e .env -- npm run test-serial --workspace=@packet-tools/server",
+    "test-gns3": "dotenv -e .env -- npm run test-gns3 --workspace=@packet-tools/server",
+    "test:installer": "node scripts/verify-installer.cjs",
+    "postinstall": "node bin/postinstall.mjs"
+  },
+  "keywords": [
+    "packet-tools",
+    "packet-tools-ai",
+    "cisco",
+    "packet-tracer",
+    "gns3",
+    "huawei",
+    "vmware",
+    "juniper",
+    "fortinet",
+    "aruba",
+    "mikrotik",
+    "network-automation",
+    "network-management",
+    "multi-agent",
+    "ai-agents",
+    "llm",
+    "agent",
+    "mcp",
+    "model-context-protocol",
+    "nextjs",
+    "react",
+    "express",
+    "sqlite",
+    "ssh",
+    "telnet",
+    "serial"
+  ],
+  "author": "Ph0Void",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "packet-tools-ai": "./bin/cli.mjs",
+    "packet-tools": "./bin/cli.mjs",
+    "packet-tools-mcp": "./bin/packet-tools-mcp.mjs"
+  },
+  "files": [
+    "bin",
+    "scripts/install-mcp.mjs",
+    "packages/mcp/dist",
+    "packages/mcp/src",
+    "packages/mcp/prisma",
+    "packages/mcp/skills",
+    "packages/mcp/scripts",
+    "packages/mcp/tsconfig.json",
+    "packages/mcp/prisma.config.ts",
+    "packages/mcp/package.json",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0",
+    "turbo": "^2.10.11"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "dependencies": {
+    "@langchain/core": "^1.2.12",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@prisma/adapter-better-sqlite3": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "better-sqlite3": "^12.10.0",
+    "deepagents": "^1.14.1",
+    "dotenv": "^17.4.2",
+    "langchain": "^1.5.12",
+    "serialport": "^13.0.0",
+    "socket.io": "^4.8.3",
+    "ssh2": "^1.17.0",
+    "zod": "^4.4.3"
+  }
+}

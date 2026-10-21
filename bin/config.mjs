@@ -1,0 +1,11 @@
+export const GITHUB_OWNER = "ph0Void";
+export const GITHUB_REPO = "packet-tools-ai";
+export const GITHUB_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
+export const RELEASES_URL = `${GITHUB_URL}/releases`;
+export const NPM_SCOPE = "@packet-tools-ai";
+export const ROOT_PACKAGE = `${NPM_SCOPE}/root`;
+export const MCP_PACKAGE = `${NPM_SCOPE}/mcp`;
+export const APP_PACKAGE = `${NPM_SCOPE}/app`;
+export const MCP_NPX_PACKAGE = MCP_PACKAGE;
+export const MCP_NPX_ARGS = ["-y", `--package=${MCP_NPX_PACKAGE}`, "packet-tools-mcp"];
+export const DOCS_URL = `${GITHUB_URL}#readme`;

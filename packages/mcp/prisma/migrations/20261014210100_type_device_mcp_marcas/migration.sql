@@ -1,0 +1,6 @@
+-- Ampliación del enum `TypeDeviceMcp` (mismo motivo que en el servidor: SQLite guarda los
+-- enums como TEXT sin CHECK, así que añadir valores no genera DDL).
+--
+-- Añade PALO_ALTO, ARISTA y VYOS sobre los JUNOS/FORTIGATE/H3C que ya estaban. Sin esta
+-- entrada registrada, una instalación nueva no aplicaría el cambio de cliente y los
+-- dispositivos de esas marcas fallarían al deserializar.

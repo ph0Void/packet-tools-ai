@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Cisco Packet Tracer</title>
+    <script src="socket.io.min.js"></script>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+
+  <body>
+    <header class="header">
+      <h1>Packet Tools Plugin v1.2.3</h1>
+      <span class="status-pill"
+        ><span id="status-dot" class="dot connecting"></span
+        ><span id="status-text">conectando</span></span
+      >
+    </header>
+
+    <main class="body">
+      <section class="card">
+        <div class="card-head">
+          <h2>Resumen</h2>
+          <button
+            type="button"
+            id="connect-url"
+            class="btn"
+            title="Guardar las dos URLs y reconectar los dos puentes a la vez"
+          >
+            Conectar
+          </button>
+        </div>
+        <div class="row">
+          <span class="k"
+            ><span id="conn-backend" class="conn idle" title="Estado de la conexión"
+              >•</span
+            >API</span
+          >
+          <span class="v-group">
+            <input
+              type="text"
+              id="endpoint-backend"
+              class="v url-input"
+              spellcheck="false"
+              autocomplete="off"
+              title="Puente del backend Packet Tools. Por defecto 7531 (SERVER_PORT). Pulsa Conectar para aplicar."
+            />
+            <button
+              type="button"
+              id="copy-backend"
+              class="btn"
+              title="Copiar la URL del backend"
+            >
+              Copiar
+            </button>
+          </span>
+        </div>
+        <div class="row">
+          <span class="k"
+            ><span id="conn-mcp" class="conn idle" title="Estado de la conexión"
+              >•</span
+            >MCP</span
+          >
+          <span class="v-group">
+            <input
+              type="text"
+              id="endpoint-mcp"
+              class="v url-input"
+              spellcheck="false"
+              autocomplete="off"
+              title="Puente del servidor MCP. Por defecto 7532 (MCP_BRIDGE_PORT). Pulsa Conectar para aplicar."
+            />
+            <button
+              type="button"
+              id="copy-mcp"
+              class="btn"
+              title="Copiar la URL del puente MCP"
+            >
+              Copiar
+            </button>
+          </span>
+        </div>
+        <div class="row">
+          <span class="k">ID de socket · backend</span
+          ><span class="v" id="sid-backend">—</span>
+        </div>
+        <div class="row">
+          <span class="k">ID de socket · MCP</span
+          ><span class="v" id="sid-mcp">—</span>
+        </div>
+        <div class="row">
+          <span class="k">Herramientas llamadas</span
+          ><span class="v" id="tool-count">0</span>
+        </div>
+      </section>
+
+      <section
+        class="card"
+        style="flex: 1; display: flex; flex-direction: column; min-height: 0"
+      >
+        <div class="card-head">
+          <h2>Logs</h2>
+          <button
+            type="button"
+            id="clear-log"
+            class="btn"
+            title="Eliminar todas las líneas de actividad"
+          >
+            Limpiar logs
+          </button>
+        </div>
+        <div id="log" class="log"></div>
+      </section>
+
+      <section class="card">
+        <h2>Repositorio Github:</h2>
+        <div class="row">
+          <a href="https://github.com/ph0Void/packet-tools-ai"
+            >https://github.com/ph0Void/packet-tools-ai</a
+          >
+        </div>
+      </section>
+    </main>
+    <script src="interface.js"></script>
+  </body>
+</html>
