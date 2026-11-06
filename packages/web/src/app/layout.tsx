@@ -3,6 +3,9 @@ import Script from "next/script";
 import { Archivo, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import SonnerToast from "@/component/ui/SonnerToast";
+import SoundEnabler from "@/component/ui/SoundEnabler";
+import { LocaleProvider } from "@/i18n/LocaleProvider";
+import { getServerLocale } from "@/i18n/server";
 
 const archivo = Archivo({
   weight: ["500", "600", "700"],
@@ -40,10 +43,13 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const locale = await getServerLocale();
+
   return (
     <html
-      lang="es"
+      suppressHydrationWarning
+      lang={locale}
       className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <head>
@@ -52,9 +58,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
         </Script>
       </head>
       <body className="min-h-full flex flex-col">
-        {children}
+        <LocaleProvider initialLocale={locale}>
+          {children}
 
-        <SonnerToast />
+          <SoundEnabler />
+          <SonnerToast />
+        </LocaleProvider>
       </body>
     </html>
   );

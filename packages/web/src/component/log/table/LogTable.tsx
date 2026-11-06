@@ -3,6 +3,8 @@
 import React from "react";
 import type { LogEntry } from "@/service/LogService";
 import LogItems from "./LogItems";
+import { useT } from "@/hooks/useT";
+import { interp } from "@/i18n/interp";
 
 interface LogTableProps {
     logs: LogEntry[];
@@ -18,6 +20,7 @@ interface LogTableProps {
 }
 
 export default function LogTable({ logs, onPageChange, paginationData, canDelete, onDelete }: LogTableProps) {
+    const t = useT();
     const { currentPage, totalPages, totalItems } = paginationData;
 
     return (
@@ -27,12 +30,12 @@ export default function LogTable({ logs, onPageChange, paginationData, canDelete
                 <table className="w-full min-w-[720px] text-left border-collapse">
                     <thead>
                         <tr className="border-b border-border bg-muted/50 text-muted-foreground uppercase text-xs font-semibold tracking-wider">
-                            <th className="py-3.5 px-4 md:px-6">Fecha</th>
-                            <th className="py-3.5 px-4 md:px-6">Nivel</th>
-                            <th className="py-3.5 px-4 md:px-6">Contenido</th>
-                            <th className="py-3.5 px-4 md:px-6">Actor</th>
+                            <th className="py-3.5 px-4 md:px-6">{t.logs.table.date}</th>
+                            <th className="py-3.5 px-4 md:px-6">{t.logs.table.level}</th>
+                            <th className="py-3.5 px-4 md:px-6">{t.logs.table.content}</th>
+                            <th className="py-3.5 px-4 md:px-6">{t.logs.table.actor}</th>
                             {canDelete && (
-                                <th className="py-3.5 px-4 md:px-6 text-right">Acciones</th>
+                                <th className="py-3.5 px-4 md:px-6 text-right">{t.logs.table.actions}</th>
                             )}
                         </tr>
                     </thead>
@@ -52,7 +55,7 @@ export default function LogTable({ logs, onPageChange, paginationData, canDelete
                                     colSpan={canDelete ? 5 : 4}
                                     className="py-8 text-center text-sm text-muted-foreground bg-card"
                                 >
-                                    No se encontraron logs disponibles.
+                                    {t.logs.table.empty}
                                 </td>
                             </tr>
                         )}
@@ -62,8 +65,8 @@ export default function LogTable({ logs, onPageChange, paginationData, canDelete
 
             <div className="flex items-center justify-between pt-2 px-1">
                 <p className="text-xs text-muted-foreground">
-                    Mostrando <span className="font-medium">{logs.length}</span> de{" "}
-                    <span className="font-medium">{totalItems}</span> logs
+                    {t.logs.table.showing} <span className="font-medium">{logs.length}</span> {t.logs.table.of}{" "}
+                    <span className="font-medium">{totalItems}</span> {t.logs.table.entries}
                 </p>
 
                 <div className="flex space-x-2">
@@ -72,11 +75,14 @@ export default function LogTable({ logs, onPageChange, paginationData, canDelete
                         disabled={currentPage <= 1}
                         className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none"
                     >
-                        Previous
+                        {t.logs.table.previous}
                     </button>
 
                     <span className="inline-flex items-center justify-center px-3 text-xs text-muted-foreground">
-                        Pág. {currentPage} de {totalPages}
+                        {interp(t.logs.table.page, {
+                            current: currentPage,
+                            total: totalPages,
+                        })}
                     </span>
 
                     <button
@@ -84,7 +90,7 @@ export default function LogTable({ logs, onPageChange, paginationData, canDelete
                         disabled={currentPage >= totalPages}
                         className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none"
                     >
-                        Next
+                        {t.logs.table.next}
                     </button>
                 </div>
             </div>

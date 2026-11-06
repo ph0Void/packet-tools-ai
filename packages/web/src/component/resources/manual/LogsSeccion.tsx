@@ -1,31 +1,30 @@
+import { useT } from "@/hooks/useT";
 import { Paragraph, Steps, SubTitle } from "./primitives";
 
 export default function LogsSeccion() {
+  const t = useT();
+  const section = t.manual.logs;
+
   return (
     <div className="space-y-5">
       <Paragraph>
-        <strong>Logs</strong> es el diario del sistema: aquí queda anotado todo
-        lo importante que pasa (quién se conectó, qué tarea se ejecutó, si algo
-        falló). Sirve para revisar qué ocurrió.
+        <strong>{t.nav.logs}</strong> {section.intro}
       </Paragraph>
 
-      <SubTitle>Cómo se usa</SubTitle>
+      <SubTitle>{section.howToUse}</SubTitle>
       <Steps
         items={[
           {
-            title: "Busca lo que pasó",
-            description:
-              "Escribe una palabra en el buscador (por ejemplo, el nombre de un equipo) o filtra por tipo.",
+            title: section.steps.search.title,
+            description: section.steps.search.description,
           },
           {
-            title: "Lee el detalle",
-            description:
-              "Cada fila dice la fecha y qué sucedió. Si algo salió mal, aparecerá marcado como error.",
+            title: section.steps.read.title,
+            description: section.steps.read.description,
           },
           {
-            title: "Descarga si lo necesitas",
-            description:
-              "Usa Exportar para guardar la lista y enviarla o guardarla como respaldo.",
+            title: section.steps.export.title,
+            description: section.steps.export.description,
           },
         ]}
       />

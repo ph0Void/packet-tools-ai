@@ -1,13 +1,17 @@
+import type { Metadata } from "next";
 import { getSessionUser } from "@/action/SecureAction";
 import { getSkillsAction } from "@/action/SkillAction";
 import type { Skill } from "@/service/SkillService";
 import SkillsManager from "@/component/skills/SkillsManager";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Habilidades",
-  description:
-    "Administración y gestión de playbooks para ampliar las capacidades del agente IA",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.skills.title}`,
+    description: t.dashboard.metadata.skills.description,
+  };
+}
 
 export default async function PageSkills() {
   const user = await getSessionUser();

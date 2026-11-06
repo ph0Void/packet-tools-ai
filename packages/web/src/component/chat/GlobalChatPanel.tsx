@@ -26,16 +26,15 @@ import {
   useUiStore,
 } from "@/store/uiStore";
 import { cn } from "@/lib/utils";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 
 const TAIL_MAX_CHARS = 8000;
 
 const MOBILE_MAX_WIDTH_VW = 90;
 
-function etiquetaLineas(lineas: LineasTailTerminal): string {
-  return lineas === 0 ? "Sin salida" : `${lineas} líneas`;
-}
-
 export function GlobalChatPanel() {
+  const t = useT();
   const pathname = usePathname();
   const open = useUiStore((s) => s.isChatPanelOpen);
   const closeChatPanel = useUiStore((s) => s.closeChatPanel);
@@ -51,6 +50,11 @@ export function GlobalChatPanel() {
   const enTerminal = pathname?.startsWith("/dashboard/terminal") ?? false;
 
   const enPaginaChat = pathname?.startsWith("/dashboard/chat") ?? false;
+
+  const etiquetaLineas = (lineas: LineasTailTerminal): string =>
+    lineas === 0
+      ? t.chat.panel.noOutput
+      : interp(t.chat.panel.lines, { count: lineas });
 
   useEffect(() => {
     if (!open) return;
@@ -151,7 +155,7 @@ export function GlobalChatPanel() {
         />
 
         <aside
-          aria-label="Asistente IA"
+          aria-label={t.chat.panel.aria}
           aria-hidden={!open}
           inert={!open}
           style={{
@@ -168,7 +172,7 @@ export function GlobalChatPanel() {
 
           <div
             role="separator"
-            aria-label="Ajustar ancho del asistente"
+            aria-label={t.chat.panel.resizeAria}
             aria-orientation="vertical"
             aria-valuenow={open ? width : undefined}
             aria-valuemin={CHAT_PANEL_MIN_WIDTH}
@@ -188,17 +192,19 @@ export function GlobalChatPanel() {
           <header className="flex h-11 shrink-0 items-center gap-2 border-b border-border/40 px-3">
             <Sparkles className="size-4 shrink-0 text-primary" />
             <span className="truncate text-xs font-semibold tracking-wide text-foreground">
-              Asistente IA
+              {t.chat.panel.title}
             </span>
             <div className="flex-1" />
             {enTerminal && (
               <>
                 <label className="flex shrink-0 cursor-pointer select-none items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground">
-                  <span className="hidden sm:inline">Adjuntar salida</span>
+                  <span className="hidden sm:inline">
+                    {t.chat.panel.attachOutput}
+                  </span>
                   <Switch
                     checked={attachOutput}
                     onCheckedChange={setAttachOutput}
-                    aria-label="Adjuntar salida de terminal al mensaje"
+                    aria-label={t.chat.panel.attachOutputAria}
                   />
                 </label>
 
@@ -211,7 +217,7 @@ export function GlobalChatPanel() {
                 >
                   <SelectTrigger
                     size="sm"
-                    aria-label="Líneas de salida de terminal a adjuntar"
+                    aria-label={t.chat.panel.linesAria}
                     className="h-6 shrink-0 border-border/40 px-1.5 text-[11px] text-muted-foreground"
                   >
                     <SelectValue />
@@ -229,7 +235,7 @@ export function GlobalChatPanel() {
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Cerrar asistente"
+              aria-label={t.chat.panel.closeAria}
               onClick={closeChatPanel}
               className="cursor-pointer text-muted-foreground hover:text-foreground"
             >

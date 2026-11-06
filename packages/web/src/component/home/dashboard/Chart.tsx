@@ -1,3 +1,5 @@
+import { getServerDictionary } from "@/i18n/server";
+
 export interface ChartBar {
     label: string;
     value: number;
@@ -10,17 +12,18 @@ interface ChartProps {
     emptyMessage?: string;
 }
 
-export default function Chart({
+export default async function Chart({
     bars,
-    emptyMessage = "Sin datos para mostrar.",
+    emptyMessage,
 }: ChartProps) {
+    const t = await getServerDictionary();
     const total = bars.reduce((acc, bar) => acc + bar.value, 0);
     const max = Math.max(1, ...bars.map((bar) => bar.value));
 
     if (total === 0) {
         return (
             <p className="py-10 text-center text-sm text-muted-foreground">
-                {emptyMessage}
+                {emptyMessage ?? t.dashboard.chart.empty}
             </p>
         );
     }

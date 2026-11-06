@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
+import { useT } from "@/hooks/useT";
 import {
   saveDeviceProviderAction,
   testDeviceConnectionAction,
@@ -80,13 +83,6 @@ const SERIAL_BAUDRATE_OPTIONS = [
 
 const DEFAULT_SERIAL_BAUDRATE = "9600";
 
-const PROTOCOL_DESCRIPTIONS: Record<string, string> = {
-  SSH: "Conexión remota segura por SSH.",
-  TELNET: "Conexión remota por Telnet (sin cifrado).",
-  SERIAL: "Conexión física a través de un puerto serial (COM / tty).",
-  SIMULATION: "Endpoint HTTP de simulación o API Bridge.",
-};
-
 const initialState: FormDeviceState = { success: false, message: "" };
 
 interface DeviceFormDialogProps {
@@ -100,6 +96,7 @@ export default function DeviceFormDialog({
   onOpenChange,
   device,
 }: DeviceFormDialogProps) {
+  const t = useT();
   const [state, formAction, isPending] = useActionState(
     saveDeviceProviderAction,
     initialState
@@ -145,9 +142,10 @@ export default function DeviceFormDialog({
     if (!state.message) return;
     if (state.success) {
       toast.success(state.message);
+      playSound(device ? "update" : "create");
       onOpenChange(false);
     } else {
-      toast.error(state.message);
+      notifyError(state.message);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
@@ -161,9 +159,7 @@ export default function DeviceFormDialog({
 
     if (typeDevice === "GNS3") {
       if (!host.trim()) {
-        toast.error(
-          "Indica el host o dirección del servidor GNS3 antes de probar.",
-        );
+        notifyError(t.devices.list.toasts.gns3HostRequired);
         return null;
       }
       return { ...base, host: host.trim(), username, password };
@@ -175,9 +171,7 @@ export default function DeviceFormDialog({
 
     if (protocol === "SERIAL") {
       if (!serialPort.trim()) {
-        toast.error(
-          "Indica el puerto serial (COM / dispositivo) antes de probar.",
-        );
+        notifyError(t.devices.list.toasts.serialPortRequired);
         return null;
       }
       return {
@@ -188,7 +182,7 @@ export default function DeviceFormDialog({
     }
 
     if (!host.trim()) {
-      toast.error("Indica el host o dirección IP antes de probar.");
+      notifyError(t.devices.list.toasts.hostRequired);
       return null;
     }
 
@@ -213,7 +207,7 @@ export default function DeviceFormDialog({
       if (result.success) {
         toast.success(result.message);
       } else {
-        toast.error(result.message);
+        notifyError(result.message);
       }
     } finally {
       setIsTesting(false);
@@ -225,11 +219,18 @@ export default function DeviceFormDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Editar Dispositivo" : "Nuevo Dispositivo"}
+            {isEdit ? t.devices.form.editTitle : t.devices.form.createTitle}
           </DialogTitle>
           <DialogDescription>
-            {PROTOCOL_DESCRIPTIONS[protocol] ??
-              "Credenciales y endpoint de conexión del equipo de red."}
+            {protocol === "SSH"
+              ? t.devices.form.protocolDescriptions.ssh
+              : protocol === "TELNET"
+                ? t.devices.form.protocolDescriptions.telnet
+                : protocol === "SERIAL"
+                  ? t.devices.form.protocolDescriptions.serial
+                  : protocol === "SIMULATION"
+                    ? t.devices.form.protocolDescriptions.simulation
+                    : t.devices.form.description}
           </DialogDescription>
         </DialogHeader>
 
@@ -238,18 +239,18 @@ export default function DeviceFormDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="device-name">Nombre identificador</Label>
+              <Label htmlFor="device-name">{t.devices.form.name}</Label>
               <Input
                 id="device-name"
                 name="name"
-                placeholder="Ej: SW-Core-Piso1, Router-Borde"
+                placeholder={t.devices.form.namePlaceholder}
                 defaultValue={device?.name ?? ""}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Tipo de dispositivo</Label>
+              <Label>{t.devices.form.type}</Label>
               <Select
                 name="typeDevice"
                 value={typeDevice}
@@ -261,7 +262,9 @@ export default function DeviceFormDialog({
                 <SelectContent>
                   {TYPE_DEVICE_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {opt.value === "GENERIC"
+                        ? t.devices.form.typeGeneric
+                        : opt.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -269,7 +272,9 @@ export default function DeviceFormDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="device-protocol">Protocolo de conexión</Label>
+              <Label htmlFor="device-protocol">
+                {t.devices.form.protocol}
+              </Label>
               <Select
                 name="protocol"
                 value={protocol}
@@ -281,7 +286,11 @@ export default function DeviceFormDialog({
                 <SelectContent>
                   {PROTOCOL_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {opt.value === "SERIAL"
+                        ? t.devices.form.protocolSerial
+                        : opt.value === "SIMULATION"
+                          ? t.devices.form.protocolSimulation
+                          : opt.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -292,12 +301,12 @@ export default function DeviceFormDialog({
               <>
                 <div className="space-y-2">
                   <Label htmlFor="device-serial-port">
-                    Puerto COM / Dispositivo
+                    {t.devices.form.serialPort}
                   </Label>
                   <Input
                     id="device-serial-port"
                     name="serialPort"
-                    placeholder="COM5 o /dev/ttyUSB0"
+                    placeholder={t.devices.form.serialPortPlaceholder}
                     value={serialPort}
                     onChange={(event) => setSerialPort(event.target.value)}
                     required
@@ -305,7 +314,9 @@ export default function DeviceFormDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="device-baudrate">Baudios</Label>
+                  <Label htmlFor="device-baudrate">
+                    {t.devices.form.baudrate}
+                  </Label>
                   <Select
                     name="serialBaudrate"
                     value={serialBaudrate}
@@ -329,7 +340,7 @@ export default function DeviceFormDialog({
             {(protocol === "SSH" || protocol === "TELNET") && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="device-host">Host / Dirección IP</Label>
+                  <Label htmlFor="device-host">{t.devices.form.host}</Label>
                   <Input
                     id="device-host"
                     name="host"
@@ -341,7 +352,7 @@ export default function DeviceFormDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="device-port">Puerto</Label>
+                  <Label htmlFor="device-port">{t.devices.form.port}</Label>
                   <Input
                     id="device-port"
                     name="port"
@@ -362,7 +373,9 @@ export default function DeviceFormDialog({
               typeDevice === "GNS3") && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="device-username">Usuario</Label>
+                  <Label htmlFor="device-username">
+                    {t.devices.form.username}
+                  </Label>
                   <Input
                     id="device-username"
                     name="username"
@@ -374,12 +387,16 @@ export default function DeviceFormDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="device-password">Contraseña</Label>
+                  <Label htmlFor="device-password">
+                    {t.devices.form.password}
+                  </Label>
                   <Input
                     id="device-password"
                     name="password"
                     type="password"
-                    placeholder={isEdit ? "•••••••• (sin cambios)" : "••••••••"}
+                    placeholder={
+                      isEdit ? t.devices.form.passwordUnchanged : "••••••••"
+                    }
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     autoComplete="new-password"
@@ -390,7 +407,7 @@ export default function DeviceFormDialog({
 
             {protocol === "SIMULATION" && (
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="device-host">Host / Dirección IP o URL</Label>
+                <Label htmlFor="device-host">{t.devices.form.hostOrUrl}</Label>
                 <Input
                   id="device-host"
                   name="host"
@@ -414,7 +431,7 @@ export default function DeviceFormDialog({
               {isTesting && (
                 <Loader2 data-icon="inline-start" className="animate-spin" />
               )}
-              Probar conexión
+              {t.devices.form.test}
             </Button>
             <Button
               type="button"
@@ -422,11 +439,13 @@ export default function DeviceFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 data-icon="inline-start" />}
-              {isEdit ? "Guardar cambios" : "Crear dispositivo"}
+              {isEdit
+                ? t.devices.form.saveChanges
+                : t.devices.form.create}
             </Button>
           </DialogFooter>
         </form>

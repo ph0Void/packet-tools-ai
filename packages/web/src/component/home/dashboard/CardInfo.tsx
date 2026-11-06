@@ -3,12 +3,14 @@
 import React from 'react'
 import { Cpu, Network, Laptop, Database, Plug2 } from "lucide-react";
 import type { Device } from "@/types";
+import { useT } from "@/hooks/useT";
 
 interface CardInfoProps {
     devices?: Device[];
 }
 
 export default function CardInfo({ devices = [] }: CardInfoProps) {
+    const t = useT();
 
     const metrics = React.useMemo(() => {
         return {
@@ -30,7 +32,7 @@ export default function CardInfo({ devices = [] }: CardInfoProps) {
                     <Database className="w-5 h-5" />
                 </div>
                 <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase">Dispositivos Totales</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">{t.dashboard.deviceMetrics.total}</p>
                     <h3 className="text-xl font-bold font-mono">{metrics.total > 0 ? metrics.total - 1 : metrics.total}</h3>
                 </div>
             </div>
@@ -41,7 +43,7 @@ export default function CardInfo({ devices = [] }: CardInfoProps) {
                         <Cpu className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase">Routers</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase">{t.dashboard.deviceMetrics.routers}</p>
                         <h3 className="text-xl font-bold font-mono">{metrics.routers}</h3>
                     </div>
                 </div>
@@ -53,7 +55,7 @@ export default function CardInfo({ devices = [] }: CardInfoProps) {
                         <Network className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase">Switches</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase">{t.dashboard.deviceMetrics.switches}</p>
                         <h3 className="text-xl font-bold font-mono">{metrics.switches}</h3>
                     </div>
                 </div>
@@ -65,7 +67,7 @@ export default function CardInfo({ devices = [] }: CardInfoProps) {
                         <Laptop className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase">End Devices / PCs</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase">{t.dashboard.deviceMetrics.endDevices}</p>
                         <h3 className="text-xl font-bold font-mono">{metrics.pcs}</h3>
                     </div>
                 </div>
@@ -77,7 +79,7 @@ export default function CardInfo({ devices = [] }: CardInfoProps) {
                         <Plug2 className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase">Others</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase">{t.dashboard.deviceMetrics.others}</p>
                         <h3 className="text-xl font-bold font-mono">{metrics.otros - 1}</h3>
                     </div>
                 </div>

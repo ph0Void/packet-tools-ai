@@ -13,9 +13,11 @@ import {
   User,
 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { loginAction, type FormState } from "@/action/AuthAction";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/hooks/useT";
 
 const initialState: FormState = {
   success: false,
@@ -27,6 +29,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
+  const t = useT();
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(
     loginAction,
@@ -36,15 +39,15 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
 
   useEffect(() => {
     if (state.success) {
-      toast.success(state.message || "Inicio de sesión exitoso");
+      toast.success(state.message || t.auth.login.successToast);
       router.push("/dashboard");
       router.refresh();
       return;
     }
     if (!isPending && state.message) {
-      toast.error(state.message);
+      notifyError(state.message);
     }
-  }, [state.success, state.message, isPending, router]);
+  }, [state.success, state.message, isPending, router, t]);
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-5">
@@ -53,7 +56,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           htmlFor="login-username"
           className="text-xs font-semibold uppercase tracking-wider text-slate-400"
         >
-          Usuario
+          {t.auth.usernameLabel}
         </label>
         <div className="relative group">
           <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
@@ -63,7 +66,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
             type="text"
             required
             autoComplete="username"
-            placeholder="Introduce tu usuario"
+            placeholder={t.auth.login.usernamePlaceholder}
             aria-invalid={!state.success && Boolean(state.message)}
             className="h-11 rounded-xl border-slate-800 bg-slate-950/60 pl-9 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:border-cyan-500/60 focus-visible:ring-cyan-500/20"
           />
@@ -75,7 +78,7 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           htmlFor="login-password"
           className="text-xs font-semibold uppercase tracking-wider text-slate-400"
         >
-          Contraseña
+          {t.auth.passwordLabel}
         </label>
         <div className="relative group">
           <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
@@ -93,7 +96,9 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
             aria-label={
-              showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+              showPassword
+                ? t.auth.login.hidePassword
+                : t.auth.login.showPassword
             }
             className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-500 transition-colors hover:text-slate-300"
           >
@@ -115,11 +120,11 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         {isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Verificando credenciales...
+            {t.auth.login.submitting}
           </>
         ) : (
           <>
-            Iniciar Sesión
+            {t.auth.login.submit}
             <LogIn className="h-4 w-4" />
           </>
         )}
@@ -145,13 +150,13 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
 
       {onSwitchToRegister && (
         <p className="text-center text-xs text-slate-500">
-          ¿No tienes cuenta?{" "}
+          {t.auth.login.noAccount}{" "}
           <button
             type="button"
             onClick={onSwitchToRegister}
             className="cursor-pointer font-semibold text-cyan-400 transition-colors hover:text-cyan-300"
           >
-            Regístrate
+            {t.auth.login.signUp}
           </button>
         </p>
       )}

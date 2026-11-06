@@ -3,16 +3,15 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-interface SwitchProps {
+interface SwitchProps extends Omit<React.ComponentProps<"button">, "onChange" | "checked"> {
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
-  disabled?: boolean;
-  className?: string;
 }
 
-export function Switch({ checked = false, onCheckedChange, disabled = false, className }: SwitchProps) {
+export function Switch({ checked = false, onCheckedChange, disabled = false, className, ...props }: SwitchProps) {
   return (
     <button
+      {...props}
       type="button"
       role="switch"
       aria-checked={checked}

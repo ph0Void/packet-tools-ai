@@ -30,23 +30,38 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { interp } from "@/i18n/interp";
+import { useT, useLocale } from "@/hooks/useT";
 import { useState } from "react";
 
-function formatRelativeTime(date: Date): string {
+function formatRelativeTime(
+  date: Date,
+  t: ReturnType<typeof useT>,
+  locale: string,
+): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (minutes < 1) return "Ahora";
-  if (minutes < 60) return `Hace ${minutes}m`;
-  if (hours < 24) return `Hace ${hours}h`;
-  if (days < 7) return `Hace ${days}d`;
-  return date.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+  if (minutes < 1) return t.chat.history.relative.now;
+  if (minutes < 60)
+    return interp(t.chat.history.relative.minutes, { count: minutes });
+  if (hours < 24)
+    return interp(t.chat.history.relative.hours, { count: hours });
+  if (days < 7)
+    return interp(t.chat.history.relative.days, { count: days });
+  return date.toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
+    day: "2-digit",
+    month: "short",
+  });
 }
 
-function groupSessionsByDate(sessions: ChatSession[]) {
+function groupSessionsByDate(
+  sessions: ChatSession[],
+  t: ReturnType<typeof useT>,
+) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const yesterday = new Date(today);
@@ -55,10 +70,10 @@ function groupSessionsByDate(sessions: ChatSession[]) {
   lastWeek.setDate(lastWeek.getDate() - 7);
 
   const groups: { label: string; sessions: ChatSession[] }[] = [
-    { label: "Hoy", sessions: [] },
-    { label: "Ayer", sessions: [] },
-    { label: "Últimos 7 días", sessions: [] },
-    { label: "Más antiguo", sessions: [] },
+    { label: t.chat.history.groups.today, sessions: [] },
+    { label: t.chat.history.groups.yesterday, sessions: [] },
+    { label: t.chat.history.groups.lastSevenDays, sessions: [] },
+    { label: t.chat.history.groups.older, sessions: [] },
   ];
 
   for (const s of sessions) {
@@ -91,6 +106,8 @@ export default function SidebarChatHistory() {
     canDelete,
   } = useChatContext();
 
+  const t = useT();
+  const { locale } = useLocale();
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [cargandoMas, setCargandoMas] = useState(false);
@@ -98,7 +115,7 @@ export default function SidebarChatHistory() {
   const filtered = chats.filter((c) =>
     (c.title ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
-  const grouped = groupSessionsByDate(filtered);
+  const grouped = groupSessionsByDate(filtered, t);
 
   const pedirMas = async () => {
     setCargandoMas(true);
@@ -120,7 +137,9 @@ export default function SidebarChatHistory() {
             onClick={() => newChat()}
           >
             <Plus className="size-4 shrink-0" />
-            <span className="truncate text-[12.5px] font-medium">Nuevo chat</span>
+            <span className="truncate text-[12.5px] font-medium">
+              {t.chat.history.newChat}
+            </span>
           </Button>
         </div>
 
@@ -130,14 +149,14 @@ export default function SidebarChatHistory() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar conversación..."
+              placeholder={t.chat.history.searchPlaceholder}
               className="pl-7 h-7 text-xs bg-muted/50 border-border/50 focus-visible:ring-1"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                aria-label="Limpiar búsqueda"
+                aria-label={t.chat.history.clearSearch}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm cursor-pointer"
               >
                 <X className="size-3" />
@@ -148,14 +167,14 @@ export default function SidebarChatHistory() {
 
         {searchQuery && hayMasChats && (
           <p className="px-3 text-[10px] leading-snug text-muted-foreground/80">
-            La búsqueda solo recorre las {chats.length} conversaciones cargadas.
+            {interp(t.chat.history.searchOnly, { count: chats.length })}
           </p>
         )}
 
         {chats.length > 0 && (
           <div className="px-3 flex items-center gap-2">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Historial
+              {t.chat.history.title}
             </span>
             <Badge
               variant="secondary"
@@ -169,7 +188,9 @@ export default function SidebarChatHistory() {
         <ScrollArea className="flex-1 min-h-0 px-1">
           {loadingChats && chats.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-8">
-              <p className="text-xs text-muted-foreground">Cargando...</p>
+              <p className="text-xs text-muted-foreground">
+                {t.chat.history.loading}
+              </p>
             </div>
           ) : chats.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-8 text-center px-3">
@@ -178,17 +199,17 @@ export default function SidebarChatHistory() {
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-medium text-foreground">
-                  Sin conversaciones
+                  {t.chat.history.emptyTitle}
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Inicia una sesión para comenzar a gestionar tu red Cisco
+                  {t.chat.history.emptyBody}
                 </p>
               </div>
             </div>
           ) : filtered.length === 0 ? (
             <div className="py-6 text-center">
               <p className="text-xs text-muted-foreground">
-                Sin resultados para &quot;{searchQuery}&quot;
+                {t.chat.history.noResults} &quot;{searchQuery}&quot;
               </p>
             </div>
           ) : (
@@ -237,7 +258,7 @@ export default function SidebarChatHistory() {
                                 )}
                               >
                                 {session.title?.substring(0, 15) ??
-                                  "Sin título"}
+                                  t.chat.history.noTitle}
                               </p>
                             </div>
                             <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
@@ -245,6 +266,8 @@ export default function SidebarChatHistory() {
                                 new Date(
                                   session.updatedAt ?? session.createdAt,
                                 ),
+                                t,
+                                locale,
                               )}
                             </span>
                           </div>
@@ -258,14 +281,14 @@ export default function SidebarChatHistory() {
                                     e.stopPropagation();
                                     setDeleteTarget(session.id);
                                   }}
-                                  aria-label="Eliminar conversación"
+                                  aria-label={t.chat.history.deleteAria}
                                   className="mr-1 cursor-pointer shrink-0 rounded p-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
                                 >
                                   <Trash2 className="size-3" />
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent side="right" className="text-xs">
-                                Eliminar conversación
+                                {t.chat.history.deleteTitle}
                               </TooltipContent>
                             </Tooltip>
                           )}
@@ -288,7 +311,9 @@ export default function SidebarChatHistory() {
                 onClick={() => void pedirMas()}
                 className="h-7 w-full cursor-pointer text-[11px] text-muted-foreground"
               >
-                {cargandoMas ? "Cargando…" : "Cargar más"}
+                {cargandoMas
+                  ? t.chat.history.loadingMore
+                  : t.chat.history.loadMore}
               </Button>
             </div>
           )}
@@ -303,11 +328,10 @@ export default function SidebarChatHistory() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm">
               <Trash2 className="size-4 text-destructive" />
-              Eliminar conversación
+              {t.chat.history.deleteTitle}
             </DialogTitle>
             <DialogDescription className="text-sm">
-              Esta acción eliminará permanentemente la conversación y todos sus
-              mensajes. No se puede deshacer.
+              {t.chat.history.deleteDescription}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -317,7 +341,7 @@ export default function SidebarChatHistory() {
               className="h-8 text-xs cursor-pointer"
               onClick={() => setDeleteTarget(null)}
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
             <Button
               id="btn-confirm-delete"
@@ -330,7 +354,7 @@ export default function SidebarChatHistory() {
                 }
               }}
             >
-              Eliminar
+              {t.chat.history.deleteConfirm}
             </Button>
           </DialogFooter>
         </DialogContent>

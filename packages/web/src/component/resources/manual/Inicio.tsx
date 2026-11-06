@@ -1,31 +1,30 @@
+import { useT } from "@/hooks/useT";
 import { Paragraph, Steps, SubTitle } from "./primitives";
 
 export default function Inicio() {
+  const t = useT();
+  const section = t.manual.inicio;
+
   return (
     <div className="space-y-5">
       <Paragraph>
-        <strong>Inicio</strong> es la pantalla principal. Aquí ves de un vistazo
-        cómo está tu red: cuántos equipos están conectados, si hay avisos
-        pendientes y accesos directos a lo más usado.
+        <strong>{t.nav.home}</strong> {section.intro}
       </Paragraph>
 
-      <SubTitle>Cómo se usa</SubTitle>
+      <SubTitle>{section.howToUse}</SubTitle>
       <Steps
         items={[
           {
-            title: "Mira el resumen",
-            description:
-              "Las tarjetas de arriba te dicen lo esencial: equipos conectados, avisos sin atender, tareas programadas y usuarios.",
+            title: section.steps.summary.title,
+            description: section.steps.summary.description,
           },
           {
-            title: "Usa los accesos directos",
-            description:
-              "Pulsa Terminal, Chat o Dispositivos para ir directo a lo que necesites sin buscar en el menú.",
+            title: section.steps.shortcuts.title,
+            description: section.steps.shortcuts.description,
           },
           {
-            title: "Revisa los avisos recientes",
-            description:
-              "Abajo verás los últimos avisos. Si hay alguno en rojo, atiéndelo primero.",
+            title: section.steps.alerts.title,
+            description: section.steps.alerts.description,
           },
         ]}
       />

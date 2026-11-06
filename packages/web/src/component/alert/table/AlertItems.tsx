@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { formatDate } from "@/utils/FormatDate";
 import { Check, Clock, Database, Edit2, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import { toggleAlertResolvedAction } from "@/action/AlertAction";
 import { severityBadgeClass, type AlertRow } from "../types";
+import { useT, useLocale } from "@/hooks/useT";
 
 interface AlertItemsProps {
     alert: AlertRow;
@@ -17,6 +20,9 @@ interface AlertItemsProps {
 }
 
 export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDelete }: AlertItemsProps) {
+    const t = useT();
+    const { locale } = useLocale();
+    const dateLocale = locale === "en" ? "en-US" : "es-ES";
     const router = useRouter();
     const [isToggling, setIsToggling] = useState(false);
 
@@ -27,15 +33,16 @@ export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDel
             if (res.success) {
                 toast.success(
                     alert.resolved
-                        ? "Alerta marcada como activa."
-                        : "Incidencia marcada como resuelta.",
+                        ? t.alerts.toasts.activated
+                        : t.alerts.toasts.resolved,
                 );
+                playSound("update");
                 router.refresh();
             } else {
-                toast.error(res.message || "No se pudo actualizar la alerta.");
+                notifyError(res.message || t.alerts.toasts.updateError);
             }
         } catch {
-            toast.error("Error de comunicación.");
+            notifyError(t.alerts.toasts.connectionError);
         } finally {
             setIsToggling(false);
         }
@@ -55,7 +62,7 @@ export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDel
                     <p className="text-xs text-muted-foreground line-clamp-2">{alert.description}</p>
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground/80 pt-0.5">
                         <Clock className="w-3 h-3" />
-                        {formatDate(alert.createdAt)}
+                        {formatDate(alert.createdAt, dateLocale)}
                     </span>
                 </div>
             </td>
@@ -63,12 +70,12 @@ export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDel
             <td className="py-4 px-6 text-sm text-muted-foreground whitespace-nowrap">
                 <span className="flex items-center gap-1.5">
                     <Database className="w-3.5 h-3.5 text-muted-foreground" />
-                    {alert.topology?.name || "Desconocida"}
+                    {alert.topology?.name || t.alerts.row.unknownTopology}
                 </span>
             </td>
 
             <td className="py-4 px-6 text-sm text-muted-foreground whitespace-nowrap">
-                {alert.user?.username || "Automático (PT)"}
+                {alert.user?.username || t.alerts.row.automatic}
             </td>
 
             <td className="py-4 px-6 text-sm whitespace-nowrap">
@@ -76,7 +83,7 @@ export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDel
                         ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                         : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
                     }`}>
-                    {alert.resolved ? "RESUELTA" : "ACTIVA"}
+                    {alert.resolved ? t.alerts.row.resolved : t.alerts.row.active}
                 </span>
             </td>
 
@@ -87,7 +94,7 @@ export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDel
                             onClick={handleResolve}
                             disabled={isToggling}
                             className="p-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-                            title={alert.resolved ? "Reabrir Incidencia" : "Resolver Incidencia"}
+                            title={alert.resolved ? t.alerts.row.reopen : t.alerts.row.resolve}
                         >
                             {isToggling ? (
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -101,7 +108,7 @@ export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDel
                         <button
                             onClick={() => onEdit(alert)}
                             className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-sky-500 hover:border-sky-500/30 transition-all cursor-pointer"
-                            title="Auditar Gravedad"
+                            title={t.alerts.row.audit}
                         >
                             <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -110,14 +117,14 @@ export default function AlertItems({ alert, canManage, isDeleting, onEdit, onDel
                             onClick={() => onDelete(alert.id)}
                             disabled={isDeleting}
                             className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-rose-500 hover:border-rose-500/30 transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-                            title="Eliminar Registro"
+                            title={t.alerts.row.delete}
                         >
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 ) : (
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">
-                        Solo lectura
+                        {t.alerts.row.readOnly}
                     </span>
                 )}
             </td>

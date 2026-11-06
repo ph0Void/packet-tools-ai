@@ -1,6 +1,8 @@
 import { formatDate } from "@/utils/FormatDate";
 import { ShieldAlert, CheckCircle2, Clock } from "lucide-react";
 import { SEVERITY_BADGE, worstTone } from "./severity";
+import { getServerDictionary, getServerLocale } from "@/i18n/server";
+import { interp } from "@/i18n/interp";
 
 export interface RecentAlertItem {
   id: string;
@@ -15,7 +17,12 @@ interface RecentAlertsFeedProps {
   alerts: RecentAlertItem[];
 }
 
-export default function RecentAlertsFeed({ alerts }: RecentAlertsFeedProps) {
+export default async function RecentAlertsFeed({
+  alerts,
+}: RecentAlertsFeedProps) {
+  const t = await getServerDictionary();
+  const locale = await getServerLocale();
+  const dateLocale = locale === "en" ? "en-US" : "es-ES";
   const unresolved = alerts.filter((a) => !a.resolved);
 
   const pipe =
@@ -32,19 +39,20 @@ export default function RecentAlertsFeed({ alerts }: RecentAlertsFeedProps) {
       <header className="mb-4 flex items-center gap-2">
         <ShieldAlert className="size-4 shrink-0 text-muted-foreground" />
         <h3 className="font-heading text-sm font-semibold text-foreground">
-          Alertas recientes
+          {t.dashboard.home.recentAlerts.title}
         </h3>
         {unresolved.length > 0 && (
           <span className="eyebrow ml-auto text-critical">
-            {unresolved.length} sin resolver
+            {interp(t.dashboard.home.recentAlerts.unresolved, {
+              count: unresolved.length,
+            })}
           </span>
         )}
       </header>
 
       {alerts.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          Ninguna alerta registrada. Los eventos de las topologías aparecerán
-          aquí.
+          {t.dashboard.home.recentAlerts.empty}
         </p>
       ) : (
         <ul className="space-y-1">
@@ -75,14 +83,14 @@ export default function RecentAlertsFeed({ alerts }: RecentAlertsFeedProps) {
                   </p>
                   <span className="mt-1 flex items-center gap-1 text-[0.6875rem] text-muted-foreground/80">
                     <Clock className="size-3" />
-                    {formatDate(alert.createdAt)}
+                    {formatDate(alert.createdAt, dateLocale)}
                   </span>
                 </div>
 
                 {alert.resolved && (
                   <span className="mt-0.5 flex shrink-0 items-center gap-1 rounded-full border border-success/25 bg-success/12 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-wider text-success">
                     <CheckCircle2 className="size-3" />
-                    Resuelta
+                    {t.dashboard.home.recentAlerts.resolved}
                   </span>
                 )}
               </li>

@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/select";
 import { Plus, Edit2, Trash2, Router } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
+import { useT } from "@/hooks/useT";
 
 interface DeviceProviderItem {
   id: string;
@@ -60,6 +63,12 @@ interface DeviceProvidersManagerProps {
 export default function DeviceProvidersManager({
   canManage = true,
 }: DeviceProvidersManagerProps) {
+  const t = useT();
+  const providers = t.devices.providers;
+  const typeLabel = (value: string) =>
+    value === "GENERIC"
+      ? t.devices.form.typeGeneric
+      : (TYPE_DEVICE_OPTIONS.find((o) => o.value === value)?.label ?? value);
   const [devices, setDevices] = useState<DeviceProviderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -73,10 +82,10 @@ export default function DeviceProvidersManager({
       if (data.success) {
         setDevices(data.data || []);
       } else {
-        toast.error(data.message || "Error al cargar dispositivos");
+        notifyError(data.message || providers.toasts.loadFailed);
       }
     } catch {
-      toast.error("Error al obtener los dispositivos.");
+      notifyError(providers.toasts.fetchFailed);
     } finally {
       setLoading(false);
     }
@@ -92,10 +101,10 @@ export default function DeviceProvidersManager({
         if (data.success) {
           setDevices(data.data || []);
         } else {
-          toast.error(data.message || "Error al cargar dispositivos");
+          notifyError(data.message || providers.toasts.loadFailed);
         }
       } catch {
-        if (active) toast.error("Error al obtener los dispositivos.");
+        if (active) notifyError(providers.toasts.fetchFailed);
       } finally {
         if (active) setLoading(false);
       }
@@ -103,7 +112,7 @@ export default function DeviceProvidersManager({
     return () => {
       active = false;
     };
-  }, []);
+  }, [providers.toasts.fetchFailed, providers.toasts.loadFailed]);
 
   const refreshDevices = async () => {
     setLoading(true);
@@ -133,7 +142,7 @@ export default function DeviceProvidersManager({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDevice?.name) {
-      toast.error("El nombre del dispositivo es obligatorio.");
+      notifyError(providers.toasts.nameRequired);
       return;
     }
 
@@ -151,31 +160,32 @@ export default function DeviceProvidersManager({
       const data = await res.json();
       if (data.success) {
         toast.success(
-          isEdit ? "Dispositivo actualizado." : "Dispositivo creado.",
+          isEdit ? providers.toasts.updated : providers.toasts.created,
         );
+        playSound(isEdit ? "update" : "create");
         setIsDialogOpen(false);
         refreshDevices();
       } else {
-        toast.error(data.message || "Error al guardar dispositivo.");
+        notifyError(data.message || providers.toasts.saveFailed);
       }
     } catch {
-      toast.error("Error en la petición.");
+      notifyError(providers.toasts.requestFailed);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Seguro de eliminar este dispositivo proveedor?")) return;
+    if (!confirm(providers.toasts.deleteConfirm)) return;
     try {
       const res = await fetch(`/api/devices/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
-        toast.success("Dispositivo eliminado.");
+        toast.success(providers.toasts.deleted);
         setDevices((prev) => prev.filter((d) => d.id !== id));
       } else {
-        toast.error(data.message || "Error al eliminar.");
+        notifyError(data.message || providers.toasts.deleteFailed);
       }
     } catch {
-      toast.error("Error al eliminar el dispositivo.");
+      notifyError(providers.toasts.deleteError);
     }
   };
 
@@ -184,16 +194,15 @@ export default function DeviceProvidersManager({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold tracking-tight">
-            Proveedores de Conexión a Dispositivos
+            {providers.title}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Administración de accesos y credenciales para Cisco Packet Tracer,
-            GNS3, SSH, Telnet y Puerto Serial.
+            {providers.subtitle}
           </p>
         </div>
         {canManage && (
           <Button onClick={() => handleOpenDialog()} className="gap-2">
-            <Plus className="w-4 h-4" /> Agregar Proveedor
+            <Plus className="w-4 h-4" /> {providers.add}
           </Button>
         )}
       </div>
@@ -203,14 +212,14 @@ export default function DeviceProvidersManager({
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase border-b border-border">
               <tr>
-                <th className="p-4">Hostname</th>
-                <th className="p-4">Tipo Dispositivo</th>
-                <th className="p-4">Protocolo</th>
-                <th className="p-4">Endpoint / IP:Puerto</th>
-                <th className="p-4">Puerto Serial / Baudrate</th>
-                <th className="p-4">Usuario</th>
-                <th className="p-4 text-center">Estado</th>
-                <th className="p-4 text-right">Acciones</th>
+                <th className="p-4">{providers.table.hostname}</th>
+                <th className="p-4">{providers.table.type}</th>
+                <th className="p-4">{providers.table.protocol}</th>
+                <th className="p-4">{providers.table.endpoint}</th>
+                <th className="p-4">{providers.table.serial}</th>
+                <th className="p-4">{providers.table.username}</th>
+                <th className="p-4 text-center">{providers.table.status}</th>
+                <th className="p-4 text-right">{providers.table.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -220,7 +229,7 @@ export default function DeviceProvidersManager({
                     colSpan={8}
                     className="p-8 text-center text-muted-foreground"
                   >
-                    Cargando dispositivos proveedores...
+                    {providers.loading}
                   </td>
                 </tr>
               ) : devices.length === 0 ? (
@@ -229,8 +238,7 @@ export default function DeviceProvidersManager({
                     colSpan={8}
                     className="p-8 text-center text-muted-foreground"
                   >
-                    No hay proveedores de dispositivos registrados. Registra uno
-                    para interactuar.
+                    {providers.empty}
                   </td>
                 </tr>
               ) : (
@@ -247,9 +255,7 @@ export default function DeviceProvidersManager({
                     </td>
                     <td className="p-4">
                       <Badge variant="outline" className="font-mono text-xs">
-                        {TYPE_DEVICE_OPTIONS.find(
-                          (o) => o.value === d.typeDevice,
-                        )?.label ?? d.typeDevice}
+                        {typeLabel(d.typeDevice)}
                       </Badge>
                     </td>
                     <td className="p-4">
@@ -318,17 +324,17 @@ export default function DeviceProvidersManager({
           <DialogHeader>
             <DialogTitle>
               {selectedDevice?.id
-                ? "Editar Proveedor de Dispositivo"
-                : "Nuevo Proveedor de Dispositivo"}
+                ? providers.dialog.editTitle
+                : providers.dialog.createTitle}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSave} className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2">
-                <Label>Nombre Identificador</Label>
+                <Label>{providers.dialog.name}</Label>
                 <Input
-                  placeholder="Ej: SW-Core-Piso1, Router-Borde-Cisco"
+                  placeholder={providers.dialog.namePlaceholder}
                   value={selectedDevice?.name || ""}
                   onChange={(e) =>
                     setSelectedDevice({
@@ -341,7 +347,7 @@ export default function DeviceProvidersManager({
               </div>
 
               <div className="space-y-2">
-                <Label>Tipo de Dispositivo</Label>
+                <Label>{providers.dialog.type}</Label>
                 <Select
                   value={selectedDevice?.typeDevice || "CISCO"}
                   onValueChange={(val) =>
@@ -354,7 +360,7 @@ export default function DeviceProvidersManager({
                   <SelectContent>
                     {TYPE_DEVICE_OPTIONS.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                        {typeLabel(opt.value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -362,7 +368,7 @@ export default function DeviceProvidersManager({
               </div>
 
               <div className="space-y-2">
-                <Label>Protocolo de Conexión</Label>
+                <Label>{providers.dialog.protocol}</Label>
                 <Select
                   value={selectedDevice?.protocol || "SSH"}
                   onValueChange={(val) =>
@@ -375,9 +381,11 @@ export default function DeviceProvidersManager({
                   <SelectContent>
                     <SelectItem value="SSH">SSH</SelectItem>
                     <SelectItem value="TELNET">Telnet</SelectItem>
-                    <SelectItem value="SERIAL">Puerto Serial</SelectItem>
+                    <SelectItem value="SERIAL">
+                      {providers.dialog.protocolSerial}
+                    </SelectItem>
                     <SelectItem value="SIMULATION">
-                      Simulación / API Bridge
+                      {providers.dialog.protocolSimulation}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -386,9 +394,9 @@ export default function DeviceProvidersManager({
               {selectedDevice?.protocol !== "SERIAL" ? (
                 <>
                   <div className="space-y-2">
-                    <Label>Host / Dirección IP</Label>
+                    <Label>{providers.dialog.host}</Label>
                     <Input
-                      placeholder="192.168.1.1 o http://localhost:7531"
+                      placeholder={providers.dialog.hostPlaceholder}
                       value={selectedDevice?.host || ""}
                       onChange={(e) =>
                         setSelectedDevice({
@@ -400,7 +408,7 @@ export default function DeviceProvidersManager({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Puerto (ej: 22, 23, 3080)</Label>
+                    <Label>{providers.dialog.port}</Label>
                     <Input
                       type="number"
                       placeholder="22"
@@ -417,9 +425,9 @@ export default function DeviceProvidersManager({
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label>Puerto Serial (COM / tty)</Label>
+                    <Label>{providers.dialog.serialPort}</Label>
                     <Input
-                      placeholder="COM1, COM6 o /dev/ttyUSB0"
+                      placeholder={providers.dialog.serialPortPlaceholder}
                       value={selectedDevice?.serialPort || ""}
                       onChange={(e) =>
                         setSelectedDevice({
@@ -431,7 +439,7 @@ export default function DeviceProvidersManager({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Baud Rate (Baudios)</Label>
+                    <Label>{providers.dialog.baudrate}</Label>
                     <Input
                       type="number"
                       placeholder="9600"
@@ -448,7 +456,7 @@ export default function DeviceProvidersManager({
               )}
 
               <div className="space-y-2">
-                <Label>Usuario</Label>
+                <Label>{providers.dialog.username}</Label>
                 <Input
                   placeholder="admin"
                   value={selectedDevice?.username || ""}
@@ -462,7 +470,7 @@ export default function DeviceProvidersManager({
               </div>
 
               <div className="space-y-2">
-                <Label>Contraseña</Label>
+                <Label>{providers.dialog.password}</Label>
                 <Input
                   type="password"
                   placeholder="••••••••"
@@ -483,9 +491,9 @@ export default function DeviceProvidersManager({
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Cancelar
+                {t.common.cancel}
               </Button>
-              <Button type="submit">Guardar Proveedor</Button>
+              <Button type="submit">{providers.dialog.save}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

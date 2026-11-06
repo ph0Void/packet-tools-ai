@@ -6,35 +6,38 @@ import {
   Sparkles,
   ArrowUpRight,
 } from "lucide-react";
+import { getServerDictionary } from "@/i18n/server";
 
-const links = [
-  {
-    href: "/dashboard/terminal",
-    label: "Terminal",
-    description: "Consolas SSH y Telnet",
-    icon: Terminal,
-  },
-  {
-    href: "/dashboard/chat",
-    label: "Chat IA",
-    description: "Asistente de red",
-    icon: MessagesSquare,
-  },
-  {
-    href: "/dashboard/skills",
-    label: "Skills",
-    description: "Nuevas capacidades del agente",
-    icon: Sparkles,
-  },
-  {
-    href: "/dashboard/connection",
-    label: "Conexiones",
-    description: "Dispositivos y servicios configurados",
-    icon: HardDrive,
-  },
-];
+export default async function QuickAccess() {
+  const t = await getServerDictionary();
 
-export default function QuickAccess() {
+  const links = [
+    {
+      href: "/dashboard/terminal",
+      label: t.dashboard.home.quickAccess.terminal,
+      description: t.dashboard.home.quickAccess.terminalHint,
+      icon: Terminal,
+    },
+    {
+      href: "/dashboard/chat",
+      label: t.dashboard.home.quickAccess.chat,
+      description: t.dashboard.home.quickAccess.chatHint,
+      icon: MessagesSquare,
+    },
+    {
+      href: "/dashboard/skills",
+      label: t.dashboard.home.quickAccess.skills,
+      description: t.dashboard.home.quickAccess.skillsHint,
+      icon: Sparkles,
+    },
+    {
+      href: "/dashboard/connection",
+      label: t.dashboard.home.quickAccess.connections,
+      description: t.dashboard.home.quickAccess.connectionsHint,
+      icon: HardDrive,
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {links.map((link) => (

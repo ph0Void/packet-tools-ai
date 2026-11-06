@@ -1,38 +1,20 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, LogOut, Menu, MessageSquare } from "lucide-react";
-import { toast } from "sonner";
+import { LogOut, Menu, MessageSquare } from "lucide-react";
+import { notifyError } from "@/lib/notify";
 import { logoutAction } from "@/action/AuthAction";
 import { useAuthStore } from "@/store/authStore";
 import { useUiStore } from "@/store/uiStore";
 import { useTopologyStore } from "@/store/topologyStore";
 import { useCiscoSocket } from "@/hooks/useCiscoSocket";
+import { useT } from "@/hooks/useT";
 import { cn } from "@/lib/utils";
 import ToggleTheme from "./ToggleTheme";
-
-const SOCKET_STATUS_CONFIG = {
-  connected: {
-    label: "Conectado",
-    title: "Conexión con el backend establecida",
-    dotClass: "bg-success",
-    textClass: "text-success",
-  },
-  connecting: {
-    label: "Conectando",
-    title: "Estableciendo conexión con el backend...",
-    dotClass: "bg-warning animate-pulse",
-    textClass: "text-warning",
-  },
-  disconnected: {
-    label: "Desconectado",
-    title: "Sin conexión con el backend",
-    dotClass: "bg-destructive",
-    textClass: "text-destructive",
-  },
-} as const;
+import LocaleToggle from "./LocaleToggle";
 
 export default function NavBar() {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
@@ -44,6 +26,27 @@ export default function NavBar() {
   const toggleChatPanel = useUiStore((state) => state.toggleChatPanel);
   const clearStore = useTopologyStore((state) => state.clearStore);
   const { status } = useCiscoSocket();
+
+  const SOCKET_STATUS_CONFIG = {
+    connected: {
+      label: t.topbar.socket.connected.label,
+      title: t.topbar.socket.connected.title,
+      dotClass: "bg-success",
+      textClass: "text-success",
+    },
+    connecting: {
+      label: t.topbar.socket.connecting.label,
+      title: t.topbar.socket.connecting.title,
+      dotClass: "bg-warning animate-pulse",
+      textClass: "text-warning",
+    },
+    disconnected: {
+      label: t.topbar.socket.disconnected.label,
+      title: t.topbar.socket.disconnected.title,
+      dotClass: "bg-destructive",
+      textClass: "text-destructive",
+    },
+  } as const;
 
   const socketStatus = SOCKET_STATUS_CONFIG[status];
   const chatEnPantallaCompleta =
@@ -57,7 +60,7 @@ export default function NavBar() {
       router.replace("/auth");
       router.refresh();
     } catch {
-      toast.error("No se pudo cerrar sesión. Inténtalo de nuevo.");
+      notifyError(t.topbar.logoutError);
     }
   };
 
@@ -67,7 +70,7 @@ export default function NavBar() {
         <button
           type="button"
           onClick={isMenuOpen ? closeMenu : openMenu}
-          aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-label={isMenuOpen ? t.topbar.closeMenu : t.topbar.openMenu}
           aria-expanded={isMenuOpen}
           className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-accent-foreground"
         >
@@ -75,7 +78,7 @@ export default function NavBar() {
         </button>
 
         <h2 className="truncate font-heading text-sm font-semibold tracking-tight text-foreground md:text-base">
-          Tu asistente inteligente de redes
+          {t.topbar.assistantTitle}
         </h2>
       </div>
 
@@ -95,6 +98,7 @@ export default function NavBar() {
           <span className="sr-only">{socketStatus.label}</span>
         </div>
 
+        <LocaleToggle />
         <ToggleTheme />
 
         {!chatEnPantallaCompleta && (
@@ -102,11 +106,11 @@ export default function NavBar() {
             type="button"
             onClick={toggleChatPanel}
             aria-label={
-              isChatPanelOpen ? "Cerrar asistente IA" : "Abrir asistente IA"
+              isChatPanelOpen ? t.topbar.closeAssistant : t.topbar.openAssistant
             }
             aria-pressed={isChatPanelOpen}
             title={
-              isChatPanelOpen ? "Cerrar asistente IA" : "Abrir asistente IA"
+              isChatPanelOpen ? t.topbar.closeAssistant : t.topbar.openAssistant
             }
             className={cn(
               "flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition-colors duration-200",
@@ -121,15 +125,15 @@ export default function NavBar() {
 
         <div className="hidden items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 md:flex">
           <span className="max-w-32 truncate text-[0.8125rem] font-medium text-foreground">
-            {user?.username ?? "Invitado"}
+            {user?.username ?? t.topbar.guest}
           </span>
         </div>
 
         <button
           type="button"
           onClick={handleLogout}
-          aria-label="Cerrar sesión"
-          title="Cerrar sesión"
+          aria-label={t.topbar.signOut}
+          title={t.topbar.signOut}
           className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent text-muted-foreground transition-colors duration-200 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut className="size-4" />

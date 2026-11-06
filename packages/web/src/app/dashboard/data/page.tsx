@@ -1,14 +1,19 @@
+import type { Metadata } from "next";
 import { getSessionUser } from "@/action/SecureAction";
 import {
   getDocuments,
   type KnowledgeDocument,
 } from "@/service/KnowledgeBaseService";
 import KnowledgeBaseManager from "@/component/data/KnowledgeBaseManager";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Base de Conocimiento",
-  description: "Gestión de documentos y manuales técnicos para la IA",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.data.title}`,
+    description: t.dashboard.metadata.data.description,
+  };
+}
 
 export default async function PageDataKnowledge() {
   const user = await getSessionUser();

@@ -36,7 +36,11 @@ import { useChatStore } from "@/store/chatStore";
 import { useTerminalStore } from "@/store/terminal.store";
 import type { LineasTailTerminal } from "@/store/terminal.store";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import { useRouter } from "next/navigation";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -276,9 +280,9 @@ export interface ChatContextValue {
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
-function deriveTitle(content: string): string {
+function deriveTitle(content: string, fallback: string): string {
   const trimmed = content.trim();
-  if (!trimmed) return "Nueva conversación";
+  if (!trimmed) return fallback;
   return trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
 }
 
@@ -310,10 +314,8 @@ function motivoDeError(
   return errorTurno.code === "cancelled" ? "cancelado" : "error";
 }
 
-function avisarTurnoEnCurso(): void {
-  toast.info(
-    "Esta conversación ya tiene un turno en curso. Espera a que termine para continuar.",
-  );
+function avisarTurnoEnCurso(t: ReturnType<typeof useT>): void {
+  toast.info(t.chat.context.turnInProgress);
 }
 
 interface MarcaTurno {
@@ -326,6 +328,7 @@ interface MarcaTurno {
 }
 
 export function ChatProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const [loadingChats, setLoadingChats] = useState(true);
   const [models, setModels] = useState<ModelOption[]>([]);
 
@@ -757,7 +760,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           const json = (await res.json().catch(() => null)) as
             | ApiEnvelope<null>
             | null;
-          throw new Error(json?.message || "Error al eliminar la conversación");
+          throw new Error(
+            json?.message || t.chat.context.deleteConversationError,
+          );
         }
 
         const store = useChatStore.getState();
@@ -777,14 +782,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             store.setMessages([]);
           }
         }
-        toast.success("Conversación eliminada");
+        toast.success(t.chat.context.conversationDeleted);
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Error al eliminar",
+        notifyError(
+          error instanceof Error ? error.message : t.chat.context.deleteError,
         );
       }
     },
-    [cargarHistorial],
+    [cargarHistorial, t.chat.context.conversationDeleted, t.chat.context.deleteConversationError, t.chat.context.deleteError],
   );
 
   const ensureChat = useCallback(
@@ -802,14 +807,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            title: deriveTitle(firstContent),
+            title: deriveTitle(firstContent, t.chat.main.newConversation),
             modelProviderId: modeloHeredado,
             connectionId: conexionHeredada,
           }),
         });
         const json = (await res.json()) as ApiEnvelope<ChatSessionConSeleccion>;
         if (!res.ok || !json.success || !json.data) {
-          toast.error(json.message || "No se pudo crear la conversación");
+          notifyError(
+            json.message || t.chat.context.createConversationFailed,
+          );
           return null;
         }
         const created: ChatSessionConSeleccion = {
@@ -825,11 +832,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         });
         return created.id;
       } catch {
-        toast.error("No se pudo crear la conversación");
+        notifyError(t.chat.context.createConversationFailed);
         return null;
       }
     },
-    [],
+    [
+      t.chat.context.createConversationFailed,
+      t.chat.main.newConversation,
+    ],
   );
 
   const resolveToolApproval = useCallback(
@@ -845,9 +855,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       setResolvingApprovals((prev) => ({ ...prev, [toolCallId]: true }));
       try {
-        const result = await sendApprovalDecision(entry.approvalId, decision);
+        const result = await sendApprovalDecision(
+          entry.approvalId,
+          decision,
+          t,
+        );
         if (!result.success) {
-          toast.error(result.message);
+          notifyError(result.message);
           return;
         }
         setApprovals((prev) => {
@@ -874,7 +888,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [approvals, resolvingApprovals],
+    [approvals, resolvingApprovals, t],
   );
 
   const approveTool = useCallback(
@@ -1154,7 +1168,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setSkillLoading(null);
       },
       onSkillCreated: (e) => {
-        toast.success(`Skill creada: ${e.title}`);
+        toast.success(
+          interp(t.chat.context.skillCreated, { title: e.title }),
+        );
       },
       onSubagentStarted: (e) => {
         setSubagents((prev) => [
@@ -1194,7 +1210,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           });
         }
 
-        if (code !== "cancelled") toast.error(msg);
+        if (code !== "cancelled") notifyError(msg);
       },
       onComplete: (m) => {
         marca.cerradoConComplete = true;
@@ -1238,7 +1254,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [abrirConsola, resolveTerminalOpenLocal],
+    [abrirConsola, resolveTerminalOpenLocal, t.chat.context.skillCreated],
   );
 
   const cerrarTurno = useCallback(
@@ -1247,6 +1263,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const motivo: MotivoCorte | null = marca.canceladoPorUsuario
         ? "cancelado"
         : motivoDeError(marca.errorTurno);
+      if (!motivo) playSound("agentComplete");
       setFinalTurno(finalDesdeMotivo(motivo));
 
       const s = useChatStore.getState();
@@ -1391,17 +1408,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               const rec = normalizeChatMessage(error.mensajeExistente);
               if (rec && s.activeChatId === chatId) s.addMessage(rec);
             }
-            toast.info(
-              "Ese mensaje ya se había enviado: no se ha vuelto a enviar.",
-            );
+            toast.info(t.chat.context.messageAlreadySent);
           } else {
             motivoSinEnvio = "TURNO_EN_CURSO";
-            avisarTurnoEnCurso();
+            avisarTurnoEnCurso(t);
           }
         } else {
           motivoSinEnvio = "ERROR";
-          toast.error(
-            error instanceof Error ? error.message : "Error al enviar el mensaje",
+          notifyError(
+            error instanceof Error ? error.message : t.chat.input.sendError,
           );
         }
       } finally {
@@ -1424,6 +1439,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       abrirTurno,
       handlersDeTurno,
       cerrarTurno,
+      t,
     ],
   );
 
@@ -1433,7 +1449,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (store.isStreaming) return;
       const chatId = store.activeChatId;
       if (!chatId) {
-        toast.info("Abre una conversación para poder reintentar el turno.");
+        toast.info(t.chat.context.openConversationToRetry);
         return;
       }
       const peticion = mensajeUsuarioReintentable(store.messages, mensajeId);
@@ -1480,11 +1496,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             if (conciliado.cambio) s.setMessages(conciliado.mensajes);
             toast.info(
               conciliado.yaEsta
-                ? "Ese turno ya tiene la respuesta del asistente: no se vuelve a generar."
-                : "Ese turno ya estaba respondido: se está actualizando la conversación.",
+                ? t.chat.context.retryAlreadyAnswered
+                : t.chat.context.retryReconciling,
             );
           } else {
-            avisarTurnoEnCurso();
+            avisarTurnoEnCurso(t);
           }
         } else if (error instanceof ErrorReintentoNoResoluble) {
 
@@ -1498,13 +1514,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               attachments: previa.attachments ?? [],
             };
           } else {
-            toast.error("No se pudo reintentar este turno.");
+            notifyError(t.chat.context.retryFailed);
           }
         } else {
-          toast.error(
+          notifyError(
             error instanceof Error
               ? error.message
-              : "No se pudo reintentar el turno",
+              : t.chat.context.retryFailedShort,
           );
         }
       } finally {
@@ -1518,7 +1534,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       void refreshChats();
     },
-    [abrirTurno, handlersDeTurno, cerrarTurno, send, sendMessage, refreshChats],
+    [abrirTurno, handlersDeTurno, cerrarTurno, send, sendMessage, refreshChats, t],
   );
 
   const reintentarTras = useCallback(

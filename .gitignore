@@ -91,3 +91,6 @@ opencode.json
 
 # WEB SITE
 website/*
+
+# E2E / TOOLING
+.playwright-cli/

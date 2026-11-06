@@ -7,6 +7,8 @@ import {
   textoDeSegmentos,
   type MotivoCorte,
 } from "@/component/chat/turnoCorte";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import type { LineasTailTerminal } from "@/store/terminal.store";
 
 export type ChatRole = "user" | "assistant";
@@ -619,7 +621,10 @@ interface CuerpoRechazo {
   data?: Record<string, unknown> | null;
 }
 
-function leerRechazo(body: CuerpoRechazo | null): {
+function leerRechazo(
+  body: CuerpoRechazo | null,
+  t: ReturnType<typeof useT>,
+): {
   message: string;
   code: CodigoRechazoEnvio;
   data: Record<string, unknown> | null;
@@ -633,7 +638,7 @@ function leerRechazo(body: CuerpoRechazo | null): {
     return null;
   }
   return {
-    message: body?.message ?? "El backend rechazó el envío",
+    message: body?.message ?? t.chat.api.rejectedSend,
     code,
     data: body?.data ?? null,
   };
@@ -728,6 +733,7 @@ export async function streamChatMessage(
   payload: StreamChatPayload,
   handlers: StreamChatHandlers,
   options: StreamChatOptions = {},
+  t: ReturnType<typeof useT>,
 ): Promise<void> {
   const apiBase = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(
     /\/+$/,
@@ -752,14 +758,14 @@ export async function streamChatMessage(
   }
 
   if (!res.ok) {
-    let message = `Error ${res.status} al enviar el mensaje`;
+    let message = interp(t.chat.api.sendFailed, { status: res.status });
     let cuerpo: CuerpoRechazo | null = null;
     try {
       cuerpo = (await res.json()) as CuerpoRechazo;
       if (cuerpo?.message) message = cuerpo.message;
     } catch {}
 
-    const rechazo = res.status === 409 ? leerRechazo(cuerpo) : null;
+    const rechazo = res.status === 409 ? leerRechazo(cuerpo, t) : null;
     if (rechazo) {
       const data = rechazo.data;
       const messageId =
@@ -813,7 +819,7 @@ export async function streamChatMessage(
         const d = data as Record<string, unknown>;
         handlers.onToolStart?.({
           id: typeof d.id === "string" ? d.id : `tool-${Date.now()}`,
-          name: typeof d.name === "string" ? d.name : "herramienta",
+          name: typeof d.name === "string" ? d.name : t.chat.api.toolFallback,
           input:
             d.input && typeof d.input === "object"
               ? (d.input as Record<string, unknown>)
@@ -826,7 +832,7 @@ export async function streamChatMessage(
         const d = data as Record<string, unknown>;
         handlers.onToolEnd?.({
           id: typeof d.id === "string" ? d.id : "",
-          name: typeof d.name === "string" ? d.name : "herramienta",
+          name: typeof d.name === "string" ? d.name : t.chat.api.toolFallback,
           input:
             d.input && typeof d.input === "object"
               ? (d.input as Record<string, unknown>)
@@ -852,9 +858,11 @@ export async function streamChatMessage(
         handlers.onToolApprovalRequired?.({
           approvalId: d.approvalId,
           toolCallId: d.toolCallId,
-          name: typeof d.name === "string" ? d.name : "herramienta",
+          name: typeof d.name === "string" ? d.name : t.chat.api.toolFallback,
           toolLabel:
-            typeof d.toolLabel === "string" ? d.toolLabel : "Configuración",
+            typeof d.toolLabel === "string"
+              ? d.toolLabel
+              : t.chat.api.defaultToolLabel,
           level: "config",
           ...(d.risk === "config" || d.risk === "dangerous"
             ? { risk: d.risk }
@@ -897,7 +905,7 @@ export async function streamChatMessage(
           : [];
         handlers.onTerminalCommand?.({
           toolCallId: d.toolCallId,
-          name: typeof d.name === "string" ? d.name : "herramienta",
+          name: typeof d.name === "string" ? d.name : t.chat.api.toolFallback,
           deviceName: typeof d.deviceName === "string" ? d.deviceName : null,
           protocol: typeof d.protocol === "string" ? d.protocol : null,
           commands,
@@ -1073,7 +1081,7 @@ export async function streamChatMessage(
       }
       case "error": {
         const mensaje =
-          extractString(data, "message") || "Error ejecutando el agente";
+          extractString(data, "message") || t.chat.api.agentError;
 
         const codigo = extractString(data, "code");
         handlers.onError(mensaje, codigoErrorStream(codigo));
@@ -1128,6 +1136,7 @@ export interface ResultadoTurno {
 }
 
 export function useAgentChat() {
+  const t = useT();
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const abortRef = useRef<AbortController | null>(null);
@@ -1196,6 +1205,7 @@ export function useAgentChat() {
           },
 
           { ...options, signal: controller.signal },
+          t,
         );
       } finally {
         if (abortRef.current === controller) abortRef.current = null;
@@ -1204,7 +1214,7 @@ export function useAgentChat() {
 
       return { texto: accumulated, cancelado: canceladoRef.current };
     },
-    [stop],
+    [stop, t],
   );
 
   useEffect(
@@ -1221,6 +1231,7 @@ export function useAgentChat() {
 export async function sendApprovalDecision(
   approvalId: string,
   decision: "approve" | "reject",
+  t: ReturnType<typeof useT>,
 ): Promise<{ success: boolean; message: string; decision?: ApprovalDecision }> {
   try {
     const apiBase = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(
@@ -1243,7 +1254,8 @@ export async function sendApprovalDecision(
       return {
         success: false,
         message:
-          body?.message || `Error ${res.status} al registrar la decisión`,
+          body?.message ||
+          interp(t.chat.api.decisionFailed, { status: res.status }),
       };
     }
 
@@ -1257,13 +1269,13 @@ export async function sendApprovalDecision(
 
     return {
       success: true,
-      message: body?.message ?? "Decisión registrada",
+      message: body?.message ?? t.chat.api.decisionRegistered,
       ...(decisionBackend ? { decision: decisionBackend } : {}),
     };
   } catch {
     return {
       success: false,
-      message: "No se pudo contactar con el servidor",
+      message: t.chat.api.connectionError,
     };
   }
 }

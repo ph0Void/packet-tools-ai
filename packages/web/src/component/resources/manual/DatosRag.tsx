@@ -1,31 +1,30 @@
+import { useT } from "@/hooks/useT";
 import { Paragraph, Steps, SubTitle } from "./primitives";
 
 export default function DatosRag() {
+  const t = useT();
+  const section = t.manual.datos;
+
   return (
     <div className="space-y-5">
       <Paragraph>
-        <strong>Datos</strong> es la biblioteca del asistente: aquí subes
-        manuales y documentos (PDF o texto) para que el Chat pueda consultarlos
-        y responderte con base en ellos.
+        <strong>{t.nav.data}</strong> {section.intro}
       </Paragraph>
 
-      <SubTitle>Cómo se usa</SubTitle>
+      <SubTitle>{section.howToUse}</SubTitle>
       <Steps
         items={[
           {
-            title: "Sube tu documento",
-            description:
-              "Arrastra tu archivo a la zona punteada o pulsa para elegirlo. Acepta PDF y texto de hasta 25 MB.",
+            title: section.steps.upload.title,
+            description: section.steps.upload.description,
           },
           {
-            title: "Ponle un nombre claro",
-            description:
-              "Escribe un título que lo identifique, por ejemplo “Manual del router”.",
+            title: section.steps.name.title,
+            description: section.steps.name.description,
           },
           {
-            title: "Pregunta desde el Chat",
-            description:
-              "En el Chat escribe @rag junto a tu pregunta para que busque la respuesta en tus documentos.",
+            title: section.steps.ask.title,
+            description: section.steps.ask.description,
           },
         ]}
       />

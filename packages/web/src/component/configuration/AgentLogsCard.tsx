@@ -4,14 +4,18 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import { updateAgentLogsEnabledAction } from "@/action/ConfigAction";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/hooks/useT";
 
 interface AgentLogsCardProps {
   initialEnabled: boolean;
 }
 
 export default function AgentLogsCard({ initialEnabled }: AgentLogsCardProps) {
+  const t = useT();
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [pending, setPending] = useState(false);
@@ -30,11 +34,12 @@ export default function AgentLogsCard({ initialEnabled }: AgentLogsCardProps) {
       const result = await updateAgentLogsEnabledAction(next);
       if (result.success) {
         toast.success(result.message);
+        playSound("update");
         router.refresh();
       } else {
         setEnabled(previous);
-        toast.error(
-          result.message || "No se pudo cambiar el registro de la traza.",
+        notifyError(
+          result.message || t.configuration.agentLogs.error,
         );
       }
     } finally {
@@ -51,23 +56,27 @@ export default function AgentLogsCard({ initialEnabled }: AgentLogsCardProps) {
           </div>
           <div>
             <h2 className="text-lg font-bold tracking-tight">
-              Activar logs
+              {t.configuration.agentLogs.title}
             </h2>
             <p className="text-xs text-muted-foreground">
-              Captura el registro de actividad de los agentes.
+              {t.configuration.agentLogs.description}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-muted-foreground">
-            {pending ? "Guardando…" : enabled ? "Activada" : "Desactivada"}
+            {pending
+              ? t.configuration.agentLogs.saving
+              : enabled
+                ? t.configuration.agentLogs.enabled
+                : t.configuration.agentLogs.disabled}
           </span>
           <Switch
             checked={enabled}
             onCheckedChange={(checked: boolean) => void handleToggle(checked)}
             disabled={pending}
-            aria-label="Activar o desactivar el registro de la traza del agente"
+            aria-label={t.configuration.agentLogs.aria}
           />
           {pending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>

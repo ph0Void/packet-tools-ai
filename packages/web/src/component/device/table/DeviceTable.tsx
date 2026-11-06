@@ -1,6 +1,8 @@
 "use client";
 
 import DeviceItems from "./DeviceItems";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import type { DeviceProvider } from "@/service/DeviceProviderService";
 
 interface DeviceTableProps {
@@ -32,6 +34,7 @@ export default function DeviceTable({
   onTest,
   onKeep,
 }: DeviceTableProps) {
+  const t = useT();
   const { currentPage, totalPages, totalItems } = paginationData;
 
   return (
@@ -40,12 +43,14 @@ export default function DeviceTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-muted-foreground uppercase text-xs font-semibold tracking-wider">
-              <th className="py-3 px-6">Dispositivo</th>
-              <th className="py-3 px-6">Tipo</th>
-              <th className="py-3 px-6">Protocolo</th>
-              <th className="py-3 px-6">Endpoint</th>
-              <th className="py-3 px-6">Estado</th>
-              <th className="py-3 px-6 text-right">Acciones</th>
+              <th className="py-3 px-6">{t.devices.list.table.device}</th>
+              <th className="py-3 px-6">{t.devices.list.table.type}</th>
+              <th className="py-3 px-6">{t.devices.list.table.protocol}</th>
+              <th className="py-3 px-6">{t.devices.list.table.endpoint}</th>
+              <th className="py-3 px-6">{t.devices.list.table.status}</th>
+              <th className="py-3 px-6 text-right">
+                {t.devices.list.table.actions}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -68,7 +73,7 @@ export default function DeviceTable({
                   colSpan={6}
                   className="py-8 text-center text-sm text-muted-foreground bg-card"
                 >
-                  No se encontraron dispositivos disponibles.
+                  {t.devices.list.table.empty}
                 </td>
               </tr>
             )}
@@ -78,8 +83,10 @@ export default function DeviceTable({
 
       <div className="flex items-center justify-between pt-2 px-1">
         <p className="text-xs text-muted-foreground">
-          Mostrando <span className="font-medium">{devices.length}</span> de{" "}
-          <span className="font-medium">{totalItems}</span> dispositivos
+          {interp(t.devices.list.table.showing, {
+            count: devices.length,
+            total: totalItems,
+          })}
         </p>
 
         <div className="flex space-x-2">
@@ -88,11 +95,14 @@ export default function DeviceTable({
             disabled={currentPage <= 1}
             className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
-            Anterior
+            {t.devices.list.table.previous}
           </button>
 
           <span className="inline-flex items-center justify-center px-3 text-xs text-muted-foreground">
-            Pág. {currentPage} de {totalPages}
+            {interp(t.devices.list.table.page, {
+              page: currentPage,
+              total: totalPages,
+            })}
           </span>
 
           <button
@@ -100,7 +110,7 @@ export default function DeviceTable({
             disabled={currentPage >= totalPages}
             className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
-            Siguiente
+            {t.devices.list.table.next}
           </button>
         </div>
       </div>

@@ -1,12 +1,17 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/action/SecureAction";
 import { getDevices } from "@/service/DeviceProviderService";
 import TableDeviceWrapper from "@/component/device/TableDeviceWrapper";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Conexiones",
-  description: "Gestión de dispositivos de red registrados",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.connection.title}`,
+    description: t.dashboard.metadata.connection.description,
+  };
+}
 
 export default async function DevicePage() {
   const user = await getSessionUser();

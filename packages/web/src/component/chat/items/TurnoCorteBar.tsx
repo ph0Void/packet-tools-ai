@@ -3,6 +3,7 @@
 import { esReintentable, TEXTO_CORTE, type MotivoCorte } from "@/component/chat/turnoCorte";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 import { Ban, CircleAlert, RotateCcw, Timer, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -41,6 +42,7 @@ export function TurnoCorteBar({
   reintentando = false,
 }: TurnoCorteBarProps) {
   const meta = META[motivo];
+  const t = useT();
   const Icono = meta.icon;
   const reintentable = esReintentable(motivo) && !!onReintentar;
 
@@ -92,11 +94,11 @@ export function TurnoCorteBar({
           variant="ghost"
           onClick={reintentar}
           disabled={ocupado}
-          aria-label="Reintentar la petición"
+          aria-label={t.chat.turno.retryAria}
           className="shrink-0 cursor-pointer gap-1.5"
         >
           <RotateCcw className="size-3.5" aria-hidden="true" />
-          {ocupado ? "Reintentando…" : "Reintentar"}
+          {ocupado ? t.chat.turno.retrying : t.chat.turno.retry}
         </Button>
       )}
     </div>

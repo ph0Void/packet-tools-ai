@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { registerAction, type FormState } from "@/action/AuthAction";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/hooks/useT";
 
 const initialState: FormState = {
   success: false,
@@ -26,6 +27,7 @@ interface RegisterFormProps {
 }
 
 export default function RegisterForm({ onSuccess }: RegisterFormProps) {
+  const t = useT();
   const [state, formAction, isPending] = useActionState(
     registerAction,
     initialState,
@@ -34,10 +36,10 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
 
   useEffect(() => {
     if (state.success) {
-      toast.success(state.message || "Usuario registrado");
+      toast.success(state.message || t.auth.register.successToast);
       onSuccess?.();
     }
-  }, [state.success, state.message, onSuccess]);
+  }, [state.success, state.message, onSuccess, t]);
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-5">
@@ -46,7 +48,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
           htmlFor="register-username"
           className="text-xs font-semibold uppercase tracking-wider text-slate-400"
         >
-          Usuario
+          {t.auth.usernameLabel}
         </label>
         <div className="relative group">
           <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
@@ -57,7 +59,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             required
             minLength={3}
             autoComplete="username"
-            placeholder="Elige un nombre de usuario"
+            placeholder={t.auth.register.usernamePlaceholder}
             aria-invalid={!state.success && Boolean(state.message)}
             className="h-11 rounded-xl border-slate-800 bg-slate-950/60 pl-9 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:border-cyan-500/60 focus-visible:ring-cyan-500/20"
           />
@@ -69,7 +71,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
           htmlFor="register-password"
           className="text-xs font-semibold uppercase tracking-wider text-slate-400"
         >
-          Contraseña
+          {t.auth.passwordLabel}
         </label>
         <div className="relative group">
           <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 transition-colors group-focus-within:text-cyan-400" />
@@ -80,7 +82,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             required
             minLength={6}
             autoComplete="new-password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder={t.auth.register.passwordPlaceholder}
             aria-invalid={!state.success && Boolean(state.message)}
             className="h-11 rounded-xl border-slate-800 bg-slate-950/60 pl-9 pr-10 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:border-cyan-500/60 focus-visible:ring-cyan-500/20"
           />
@@ -88,7 +90,9 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
             aria-label={
-              showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+              showPassword
+                ? t.auth.register.hidePassword
+                : t.auth.register.showPassword
             }
             className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-slate-500 transition-colors hover:text-slate-300"
           >
@@ -110,11 +114,11 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
         {isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            Registrando usuario...
+            {t.auth.register.submitting}
           </>
         ) : (
           <>
-            Registrarse
+            {t.auth.register.submit}
             <UserPlus className="h-4 w-4" />
           </>
         )}

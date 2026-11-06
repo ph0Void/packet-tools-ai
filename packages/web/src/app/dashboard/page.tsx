@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import {
   MonitorSmartphone,
@@ -18,11 +19,16 @@ import RecentAlertsFeed from "@/component/home/RecentAlertsFeed";
 import TopologyPreviewCard from "@/component/home/TopologyPreviewCard";
 import Chart from "@/component/home/dashboard/Chart";
 import { severityTone } from "@/component/home/severity";
+import { getServerDictionary } from "@/i18n/server";
+import { interp } from "@/i18n/interp";
 
-export const metadata = {
-  title: "Packet Tools - Panel de Monitoreo General",
-  description: "Métricas del sistema y monitoreo de red en tiempo real",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.home.title}`,
+    description: t.dashboard.metadata.home.description,
+  };
+}
 
 async function fetchData<T>(
   request: () => Promise<ApiResponse<T>>,
@@ -45,6 +51,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
 }
 
 export default async function HomePage() {
+  const t = await getServerDictionary();
   const [user, alerts, devices, jobs, users, topologies] = await Promise.all([
     getSessionUser().catch(() => null),
     fetchData(getAlerts),
@@ -92,33 +99,43 @@ export default async function HomePage() {
 
   const stats: StatCardData[] = [
     {
-      label: "Equipos online",
+      label: t.dashboard.home.stats.onlineDevices,
       value: onlineDevices.length,
-      hint: `de ${safeDevices.length} registrados`,
+      hint: interp(t.dashboard.home.stats.ofRegistered, {
+        count: safeDevices.length,
+      }),
       icon: MonitorSmartphone,
       tone: devicesTone,
     },
     {
-      label: "Alertas activas",
+      label: t.dashboard.home.stats.activeAlerts,
       value: activeAlerts.length,
       hint:
         activeAlerts.length === 0
-          ? `sin incidencias abiertas · ${safeAlerts.length} en total`
-          : `peor severidad: ${worstSeverity.toLowerCase()}`,
+          ? interp(t.dashboard.home.stats.noIncidents, {
+              total: safeAlerts.length,
+            })
+          : interp(t.dashboard.home.stats.worstSeverity, {
+              severity: worstSeverity.toLowerCase(),
+            }),
       icon: ShieldAlert,
       tone: activeAlerts.length === 0 ? "success" : severityTone(worstSeverity),
     },
     {
-      label: "Tareas programadas",
+      label: t.dashboard.home.stats.scheduledTasks,
       value: activeJobs.length,
-      hint: `${safeJobs.length} configuradas`,
+      hint: interp(t.dashboard.home.stats.configured, {
+        count: safeJobs.length,
+      }),
       icon: CalendarClock,
       tone: activeJobs.length === 0 ? "idle" : "success",
     },
     {
-      label: "Usuarios registrados",
+      label: t.dashboard.home.stats.registeredUsers,
       value: safeUsers.length,
-      hint: user ? `Sesión: ${user.username}` : undefined,
+      hint: user
+        ? interp(t.dashboard.home.stats.session, { user: user.username })
+        : undefined,
       icon: Users,
       tone: "info",
     },
@@ -126,10 +143,26 @@ export default async function HomePage() {
 
   const severityBars = (
     [
-      { label: "Crítica", value: "CRITICAL", barClassName: "bg-critical" },
-      { label: "Alta", value: "HIGH", barClassName: "bg-high" },
-      { label: "Media", value: "MEDIUM", barClassName: "bg-medium" },
-      { label: "Baja", value: "LOW", barClassName: "bg-low" },
+      {
+        label: t.dashboard.home.severityChart.critical,
+        value: "CRITICAL",
+        barClassName: "bg-critical",
+      },
+      {
+        label: t.dashboard.home.severityChart.high,
+        value: "HIGH",
+        barClassName: "bg-high",
+      },
+      {
+        label: t.dashboard.home.severityChart.medium,
+        value: "MEDIUM",
+        barClassName: "bg-medium",
+      },
+      {
+        label: t.dashboard.home.severityChart.low,
+        value: "LOW",
+        barClassName: "bg-low",
+      },
     ] as const
   ).map((item) => ({
     ...item,
@@ -143,21 +176,21 @@ export default async function HomePage() {
       <header>
         <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-[1.75rem] md:leading-tight">
           {user
-            ? `Bienvenido ${user.username} 👋 `
-            : `Monitoreo general de red y sistema.`}
+            ? interp(t.dashboard.home.welcome, { name: user.username })
+            : t.dashboard.home.monitoring}
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Resumen operativo del sistema.
+          {t.dashboard.home.subtitle}
         </p>
       </header>
 
       <section>
-        <SectionLabel>Estadísticas rápidas</SectionLabel>
+        <SectionLabel>{t.dashboard.home.quickStats}</SectionLabel>
         <StatsCards stats={stats} />
       </section>
 
       <section>
-        <SectionLabel>Accesos directos</SectionLabel>
+        <SectionLabel>{t.dashboard.home.shortcuts}</SectionLabel>
         <QuickAccess />
       </section>
 
@@ -166,10 +199,12 @@ export default async function HomePage() {
           <section className="panel p-5">
             <header className="mb-5 flex items-center gap-2">
               <h3 className="font-heading text-sm font-semibold text-foreground">
-                Alertas por severidad
+                {t.dashboard.home.severityChart.title}
               </h3>
               <span className="eyebrow ml-auto">
-                {safeAlerts.length} en total
+                {interp(t.dashboard.home.severityChart.total, {
+                  count: safeAlerts.length,
+                })}
               </span>
             </header>
             <Chart
@@ -178,7 +213,7 @@ export default async function HomePage() {
                 value: bar.count,
                 barClassName: bar.barClassName,
               }))}
-              emptyMessage="Ninguna alerta registrada todavía. Cuando una topología reporte un evento aparecerá aquí."
+              emptyMessage={t.dashboard.home.severityChart.empty}
             />
           </section>
 

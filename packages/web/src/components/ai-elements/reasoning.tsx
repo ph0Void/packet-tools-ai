@@ -7,6 +7,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
@@ -218,57 +219,60 @@ const streamdownControls: ControlsConfig = {
   mermaid: { copy: true, download: true, fullscreen: true, panZoom: true },
 };
 
-const streamdownTranslations: Partial<StreamdownTranslations> = {
-  close: "Cerrar",
-  copied: "Copiado",
-  copyCode: "Copiar código",
-  copyLink: "Copiar enlace",
-  copyTable: "Copiar tabla",
-  copyTableAsCsv: "Copiar tabla como CSV",
-  copyTableAsMarkdown: "Copiar tabla como Markdown",
-  copyTableAsTsv: "Copiar tabla como TSV",
-  downloadDiagram: "Descargar diagrama",
-  downloadDiagramAsMmd: "Descargar diagrama como MMD",
-  downloadDiagramAsPng: "Descargar diagrama como PNG",
-  downloadDiagramAsSvg: "Descargar diagrama como SVG",
-  downloadFile: "Descargar archivo",
-  downloadImage: "Descargar imagen",
-  downloadTable: "Descargar tabla",
-  downloadTableAsCsv: "Descargar tabla como CSV",
-  downloadTableAsMarkdown: "Descargar tabla como Markdown",
-  exitFullscreen: "Salir de pantalla completa",
-  externalLinkWarning: "Vas a visitar un sitio externo.",
-  imageNotAvailable: "Imagen no disponible",
-  mermaidFormatMmd: "MMD",
-  mermaidFormatPng: "PNG",
-  mermaidFormatSvg: "SVG",
-  openExternalLink: "¿Abrir enlace externo?",
-  openLink: "Abrir enlace",
-  tableFormatCsv: "CSV",
-  tableFormatMarkdown: "Markdown",
-  tableFormatTsv: "TSV",
-  viewFullscreen: "Ver en pantalla completa",
-};
-
 export const ReasoningContent = memo(
-  ({ className, children, ...props }: ReasoningContentProps) => (
-    <CollapsibleContent
-      className={cn(
-        "mt-4 text-sm",
-        "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
-        className
-      )}
-      {...props}
-    >
-      <Streamdown
-        controls={streamdownControls}
-        plugins={streamdownPlugins}
-        translations={streamdownTranslations}
+  ({ className, children, ...props }: ReasoningContentProps) => {
+    const t = useT().chat.streamdown;
+    const streamdownTranslations: Partial<StreamdownTranslations> = {
+      close: t.close,
+      copied: t.copied,
+      copyCode: t.copyCode,
+      copyLink: t.copyLink,
+      copyTable: t.copyTable,
+      copyTableAsCsv: t.copyTableAsCsv,
+      copyTableAsMarkdown: t.copyTableAsMarkdown,
+      copyTableAsTsv: t.copyTableAsTsv,
+      downloadDiagram: t.downloadDiagram,
+      downloadDiagramAsMmd: t.downloadDiagramAsMmd,
+      downloadDiagramAsPng: t.downloadDiagramAsPng,
+      downloadDiagramAsSvg: t.downloadDiagramAsSvg,
+      downloadFile: t.downloadFile,
+      downloadImage: t.downloadImage,
+      downloadTable: t.downloadTable,
+      downloadTableAsCsv: t.downloadTableAsCsv,
+      downloadTableAsMarkdown: t.downloadTableAsMarkdown,
+      exitFullscreen: t.exitFullscreen,
+      externalLinkWarning: t.externalLinkWarning,
+      imageNotAvailable: t.imageNotAvailable,
+      mermaidFormatMmd: "MMD",
+      mermaidFormatPng: "PNG",
+      mermaidFormatSvg: "SVG",
+      openExternalLink: t.openExternalLink,
+      openLink: t.openLink,
+      tableFormatCsv: "CSV",
+      tableFormatMarkdown: "Markdown",
+      tableFormatTsv: "TSV",
+      viewFullscreen: t.viewFullscreen,
+    };
+
+    return (
+      <CollapsibleContent
+        className={cn(
+          "mt-4 text-sm",
+          "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+          className
+        )}
+        {...props}
       >
-        {children}
-      </Streamdown>
-    </CollapsibleContent>
-  )
+        <Streamdown
+          controls={streamdownControls}
+          plugins={streamdownPlugins}
+          translations={streamdownTranslations}
+        >
+          {children}
+        </Streamdown>
+      </CollapsibleContent>
+    );
+  }
 );
 
 Reasoning.displayName = "Reasoning";

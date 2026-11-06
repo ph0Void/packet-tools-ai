@@ -1,48 +1,42 @@
+import { useT } from "@/hooks/useT";
 import { Bullets, Paragraph, Steps, SubTitle } from "./primitives";
 
 export default function TerminalSeccion() {
+  const t = useT();
+  const section = t.manual.terminal;
+
   return (
     <div className="space-y-5">
       <Paragraph>
-        <strong>Terminal</strong> es una ventana directa a tu equipo, como si
-        estuvieras frente a él escribiendo comandos. Lo que escribes llega al
-        equipo y su respuesta aparece en pantalla.
+        <strong>{t.nav.terminal}</strong> {section.intro}
       </Paragraph>
       <Paragraph>
-        Soporta conexiones por <strong>SSH</strong> (segura, la recomendada),{" "}
-        <strong>Telnet</strong> (equipos viejos) y <strong>puerto Serial</strong>{" "}
-        (cable físico). Los laboratorios virtuales (GNS3 y Packet Tracer) no se
-        abren aquí: se usan desde el Chat.
+        {section.protocolsPrefix} <strong>{section.ssh}</strong>{" "}
+        {section.protocolsMiddle} <strong>{section.telnet}</strong>{" "}
+        {section.protocolsMiddle2} <strong>{section.serial}</strong>{" "}
+        {section.protocolsSuffix}
       </Paragraph>
 
-      <SubTitle>Cómo se usa</SubTitle>
+      <SubTitle>{section.howToUse}</SubTitle>
       <Steps
         items={[
           {
-            title: "Elige el equipo",
-            description:
-              "Selecciona uno de tu lista y pulsa Conectar. Verás el aviso En línea cuando esté listo.",
+            title: section.steps.choose.title,
+            description: section.steps.choose.description,
           },
           {
-            title: "Escribe y lee",
-            description:
-              "Escribe lo que quieras consultar y lee la respuesta del equipo en la ventana.",
+            title: section.steps.write.title,
+            description: section.steps.write.description,
           },
           {
-            title: "Desconecta al terminar",
-            description:
-              "Pulsa Desconectar cuando acabes para liberar la conexión.",
+            title: section.steps.disconnect.title,
+            description: section.steps.disconnect.description,
           },
         ]}
       />
 
-      <SubTitle>Si no tienes equipo guardado</SubTitle>
-      <Bullets
-        items={[
-          "Pulsa Manual y conéctate escribiendo la dirección, el usuario y la contraseña, sin guardar nada.",
-          "Para cable serie elige el puerto (por ejemplo COM3) y la velocidad (normalmente 9600).",
-        ]}
-      />
+      <SubTitle>{section.noDeviceTitle}</SubTitle>
+      <Bullets items={[section.noDevice.manual, section.noDevice.serial]} />
     </div>
   );
 }

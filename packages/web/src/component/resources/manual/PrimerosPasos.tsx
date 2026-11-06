@@ -1,76 +1,70 @@
 import { ExternalLink } from "lucide-react";
+import { useT } from "@/hooks/useT";
 import { Paragraph, Steps, SubTitle } from "./primitives";
 
 const REFERENCES = [
   {
-    title: "Plugin Packet Tracer",
+    key: "plugin",
     url: "https://github.com/ph0Void/packet-tools-ai/releases/tag/plugin",
-    description: "Plugin para conectar Packet Tracer con el asistente.",
   },
   {
-    title: "Instalar en Windows",
+    key: "windows",
     url: "https://github.com/ph0Void/packet-tools-ai/releases/latest",
-    description: "Instalador de Packet Tools para Windows.",
   },
   {
-    title: "Instalar en Linux",
+    key: "linux",
     url: "https://github.com/ph0Void/packet-tools-ai/releases/latest",
-    description: "Instalador de Packet Tools para Linux.",
   },
   {
-    title: "Simulador Packet Tracer",
+    key: "packetTracer",
     url: "https://www.netacad.com/resources/lab-downloads",
-    description: "Simulador oficial de redes de Cisco.",
   },
   {
-    title: "Instalador GNS3",
+    key: "gns3",
     url: "https://www.gns3.com/",
-    description: "Simulador de redes open-source.",
   },
   {
-    title: "Packet Tools Github",
+    key: "github",
     url: "https://github.com/ph0Void/packet-tools-ai",
-    description: "Repositorio de código abierto.",
   },
-];
+] as const;
 
 export default function PrimerosPasos() {
+  const t = useT().manual.primerosPasos;
+  const references = REFERENCES.map((ref) => ({
+    ...ref,
+    ...t.references[ref.key],
+  }));
+
   return (
     <div className="space-y-5">
       <section className="space-y-2">
-        <SubTitle>Bienvenido a Packet Tools</SubTitle>
-        <Paragraph>
-          Packet Tools es tu ayudante para cuidar tu red: te avisa de fallos, te
-          deja hablar con tus equipos y hace tareas por ti. No necesitas saber
-          comandos: escríbele como a una persona desde el Chat.
-        </Paragraph>
+        <SubTitle>{t.welcomeTitle}</SubTitle>
+        <Paragraph>{t.welcome}</Paragraph>
         <Steps
           items={[
             {
-              title: "Crea tu cuenta",
-              description:
-                "En la pantalla de acceso pulsa Regístrate, elige un nombre y una contraseña, y entra.",
+              title: t.steps.account.title,
+              description: t.steps.account.description,
             },
             {
-              title: "Agrega un equipo",
-              description:
-                "Ve a Conexiones, pulsa Nuevo dispositivo y guarda tu primer equipo.",
+              title: t.steps.device.title,
+              description: t.steps.device.description,
             },
             {
-              title: "Pide algo al asistente",
-              description:
-                "Ve al Chat y escríbele, por ejemplo: “dime si mi router responde”.",
+              title: t.steps.ask.title,
+              description: t.steps.ask.description,
             },
           ]}
         />
       </section>
 
       <section className="space-y-2">
-        <SubTitle>Enlaces de referencia</SubTitle>
-        <Paragraph>Programas y descargas que te pueden hacer falta.</Paragraph>
+        <SubTitle>{t.referencesTitle}</SubTitle>
+        <Paragraph>{t.referencesIntro}</Paragraph>
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {REFERENCES.map((ref) => (
-            <li key={ref.title}>
+          {references.map((ref) => (
+            <li key={ref.key}>
               <a
                 href={ref.url}
                 target="_blank"

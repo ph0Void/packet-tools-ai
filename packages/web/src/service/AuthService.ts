@@ -1,5 +1,6 @@
 import { envConfig } from "@/config/EnvConfig";
 import { api, type ApiResponse } from "@/service/client/ApiClient";
+import { getServerDictionary } from "@/i18n/server";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 const COOKIE_NAME = envConfig.NEXT_PUBLIC_COOKIE_NAME ?? "packet-tools-cookie";
@@ -28,6 +29,8 @@ export async function loginAuthService(
   username: string,
   password: string,
 ): Promise<LoginResult> {
+  const t = await getServerDictionary();
+
   try {
     const res = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
@@ -50,7 +53,7 @@ export async function loginAuthService(
     if (!res.ok || !payload.success || !payload.data || !token) {
       return {
         success: false,
-        message: payload.message || "Credenciales inválidas.",
+        message: payload.message || t.forms.auth.invalidCredentials,
         data: null,
       };
     }
@@ -60,7 +63,7 @@ export async function loginAuthService(
     console.error("Error en loginAuthService:", error);
     return {
       success: false,
-      message: "No se pudo conectar con el servidor.",
+      message: t.errors.connectionError,
       data: null,
     };
   }

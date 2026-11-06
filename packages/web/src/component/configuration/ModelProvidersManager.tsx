@@ -14,6 +14,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import {
   deleteModelProviderAction,
   getAllModelProvidersAction,
@@ -41,6 +43,8 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/hooks/useT";
+import { interp } from "@/i18n/interp";
 
 /**
  * Espejo del enum `AiProvider` de Prisma (`packages/server/prisma/schema.prisma`).
@@ -69,9 +73,8 @@ const ETIQUETAS_PROVEEDOR: Record<string, string> = {
   GOOGLE: "Google Gemini",
   OPENROUTER: "OpenRouter",
   ANTHROPIC: "Anthropic (Claude)",
-  OLLAMA: "Ollama (local)",
-  LMSTUDIO: "LM Studio (local)",
-  CUSTOM: "Personalizado (OpenAI-compatible)",
+  OLLAMA: "Ollama",
+  LMSTUDIO: "LM Studio",
   GROK: "xAI · Grok",
   DEEPSEEK: "DeepSeek",
   ZAI: "Z.ai · GLM",
@@ -139,6 +142,7 @@ function buildPayload(form: ProviderForm): FormData {
 }
 
 export default function ModelProvidersManager() {
+  const t = useT();
   const router = useRouter();
   const [models, setModels] = useState<ModelProvider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,17 +151,22 @@ export default function ModelProvidersManager() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
 
+  const providerLabel = (provider: string) =>
+    provider === "CUSTOM"
+      ? t.configuration.models.providers.custom
+      : (ETIQUETAS_PROVEEDOR[provider] ?? provider);
+
   const loadModels = useCallback(async () => {
     const result = await getAllModelProvidersAction();
     if (result.success && Array.isArray(result.data)) {
       setModels(result.data as ModelProvider[]);
     } else {
-      toast.error(
-        result.message || "Error al cargar los proveedores de modelos.",
+      notifyError(
+        result.message || t.configuration.models.toasts.loadError,
       );
     }
     setLoading(false);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -189,11 +198,11 @@ export default function ModelProvidersManager() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.modelName.trim()) {
-      toast.error("El nombre y el modelo son obligatorios.");
+      notifyError(t.configuration.models.toasts.required);
       return;
     }
     if (form.temperature < 0 || form.temperature > 2) {
-      toast.error("La temperatura debe estar entre 0 y 2.");
+      notifyError(t.configuration.models.toasts.temperatureRange);
       return;
     }
     setSaving(true);
@@ -203,13 +212,14 @@ export default function ModelProvidersManager() {
     );
     setSaving(false);
     if (result.success) {
-      toast.success(result.message || "Proveedor de modelo guardado.");
+      toast.success(result.message || t.configuration.models.toasts.saved);
+      playSound(form.id ? "update" : "create");
       setIsDialogOpen(false);
       router.refresh();
       setLoading(true);
       void loadModels();
     } else {
-      toast.error(result.message || "Error al guardar el modelo.");
+      notifyError(result.message || t.configuration.models.toasts.saveError);
     }
   };
 
@@ -230,37 +240,44 @@ export default function ModelProvidersManager() {
       }),
     );
     if (result.success) {
-      toast.success(`Modelo ${checked ? "activado" : "desactivado"}.`);
+      toast.success(
+        checked
+          ? t.configuration.models.toasts.activated
+          : t.configuration.models.toasts.deactivated,
+      );
+      playSound("update");
       setModels((prev) =>
         prev.map((m) => (m.id === model.id ? { ...m, isActive: checked } : m)),
       );
       router.refresh();
     } else {
-      toast.error(result.message || "No se pudo cambiar el estado del modelo.");
+      notifyError(result.message || t.configuration.models.toasts.toggleError);
     }
   };
 
   const handleDelete = async (model: ModelProvider) => {
     if (
       !confirm(
-        `¿Eliminar el proveedor de modelo "${model.name}"? Esta acción no se puede deshacer.`,
+        interp(t.configuration.models.toasts.deleteConfirm, {
+          name: model.name,
+        }),
       )
     ) {
       return;
     }
     const result = await deleteModelProviderAction(model.id);
     if (result.success) {
-      toast.success(result.message || "Modelo eliminado correctamente.");
+      toast.success(result.message || t.configuration.models.toasts.deleted);
       setModels((prev) => prev.filter((m) => m.id !== model.id));
       router.refresh();
     } else {
-      toast.error(result.message || "Error al eliminar el modelo.");
+      notifyError(result.message || t.configuration.models.toasts.deleteError);
     }
   };
 
   const handleTestConnection = async () => {
     if (!form.modelName.trim()) {
-      toast.error("Define el nombre exacto del modelo antes de validar.");
+      notifyError(t.configuration.models.toasts.modelNameRequired);
       return;
     }
 
@@ -275,7 +292,7 @@ export default function ModelProvidersManager() {
     const hasStoredApiKey = Boolean(storedModel?.apiKey);
 
     if (!isLocal && !hasFormApiKey && !hasStoredApiKey) {
-      toast.error("Falta la API Key para este proveedor.");
+      notifyError(t.configuration.models.toasts.apiKeyMissing);
       return;
     }
 
@@ -295,10 +312,10 @@ export default function ModelProvidersManager() {
       );
 
       if (result.success) {
-        toast.success(result.message || "Conexión correcta.");
+        toast.success(result.message || t.configuration.models.toasts.testOk);
       } else {
-        toast.error(
-          result.message || "No se pudo completar la prueba de conexión.",
+        notifyError(
+          result.message || t.configuration.models.toasts.testError,
         );
       }
     } finally {
@@ -322,16 +339,15 @@ export default function ModelProvidersManager() {
           </div>
           <div>
             <h2 className="text-lg font-bold tracking-tight">
-              Proveedores de Inteligencia Artificial
+              {t.configuration.models.title}
             </h2>
             <p className="text-xs text-muted-foreground">
-              Compatible con OpenAI, Google Gemini, Anthropic, Ollama, LM Studio
-              y otros.
+              {t.configuration.models.description}
             </p>
           </div>
         </div>
         <Button onClick={openCreateDialog} className="gap-2 w-full sm:w-auto">
-          <Plus className="w-4 h-4" /> Añadir
+          <Plus className="w-4 h-4" /> {t.configuration.models.add}
         </Button>
       </div>
 
@@ -340,14 +356,18 @@ export default function ModelProvidersManager() {
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase border-b border-border">
               <tr>
-                <th className="p-4">Nombre</th>
-                <th className="p-4">Proveedor</th>
-                <th className="p-4">Modelo</th>
-                <th className="p-4">Tipo</th>
-                <th className="p-4">URL / Endpoint</th>
-                <th className="p-4">API Key</th>
-                <th className="p-4 text-center">Estado</th>
-                <th className="p-4 text-right">Acciones</th>
+                <th className="p-4">{t.configuration.models.columnName}</th>
+                <th className="p-4">{t.configuration.models.columnProvider}</th>
+                <th className="p-4">{t.configuration.models.columnModel}</th>
+                <th className="p-4">{t.configuration.models.columnType}</th>
+                <th className="p-4">{t.configuration.models.columnUrl}</th>
+                <th className="p-4">{t.configuration.models.columnApiKey}</th>
+                <th className="p-4 text-center">
+                  {t.configuration.models.columnStatus}
+                </th>
+                <th className="p-4 text-right">
+                  {t.configuration.models.columnActions}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -358,7 +378,7 @@ export default function ModelProvidersManager() {
                     className="p-8 text-center text-muted-foreground"
                   >
                     <span className="inline-flex items-center gap-2">
-                      <Spinner /> Cargando modelos...
+                      <Spinner /> {t.configuration.models.loading}
                     </span>
                   </td>
                 </tr>
@@ -368,8 +388,7 @@ export default function ModelProvidersManager() {
                     colSpan={8}
                     className="p-8 text-center text-muted-foreground"
                   >
-                    No hay modelos de IA configurados. Agrega uno nuevo para
-                    comenzar.
+                    {t.configuration.models.empty}
                   </td>
                 </tr>
               ) : (
@@ -402,7 +421,7 @@ export default function ModelProvidersManager() {
                       </Badge>
                     </td>
                     <td className="p-4 font-mono text-xs text-muted-foreground max-w-[160px] truncate">
-                      {m.baseUrl || "Cloud por defecto"}
+                      {m.baseUrl || t.configuration.models.defaultCloud}
                     </td>
                     <td className="p-4 font-mono text-xs text-muted-foreground">
                       {m.apiKey ? "[configured]" : "—"}
@@ -413,14 +432,19 @@ export default function ModelProvidersManager() {
                         onCheckedChange={(checked: boolean) =>
                           handleToggleActive(m, checked)
                         }
-                        aria-label={`Activar o desactivar ${m.name}`}
+                        aria-label={interp(
+                          t.configuration.models.toggleAria,
+                          { name: m.name },
+                        )}
                       />
                     </td>
                     <td className="p-4 text-right space-x-1 whitespace-nowrap">
                       <Button
                         size="icon"
                         variant="ghost"
-                        aria-label={`Editar ${m.name}`}
+                        aria-label={interp(t.configuration.models.editAria, {
+                          name: m.name,
+                        })}
                         onClick={() => openEditDialog(m)}
                       >
                         <Edit2 className="w-4 h-4" />
@@ -429,7 +453,10 @@ export default function ModelProvidersManager() {
                         size="icon"
                         variant="ghost"
                         className="text-destructive hover:bg-destructive/10"
-                        aria-label={`Eliminar ${m.name}`}
+                        aria-label={interp(
+                          t.configuration.models.deleteAria,
+                          { name: m.name },
+                        )}
                         onClick={() => handleDelete(m)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -448,18 +475,20 @@ export default function ModelProvidersManager() {
           <DialogHeader>
             <DialogTitle>
               {form.id
-                ? "Editar Proveedor de Modelo"
-                : "Nuevo Proveedor de Modelo"}
+                ? t.configuration.models.editTitle
+                : t.configuration.models.newTitle}
             </DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleSave} className="space-y-4 py-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="provider-name">Nombre del modelo </Label>
+                <Label htmlFor="provider-name">
+                  {t.configuration.models.fields.name}
+                </Label>
                 <Input
                   id="provider-name"
-                  placeholder="Ej: deepseek-v4.1-flash, claude-haiku-5.5"
+                  placeholder={t.configuration.models.fields.namePlaceholder}
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value)}
                   required
@@ -467,7 +496,7 @@ export default function ModelProvidersManager() {
               </div>
 
               <div className="space-y-2">
-                <Label>Proveedor</Label>
+                <Label>{t.configuration.models.fields.provider}</Label>
                 <Select
                   value={form.provider}
                   onValueChange={(val) => updateForm("provider", val)}
@@ -478,7 +507,7 @@ export default function ModelProvidersManager() {
                   <SelectContent>
                     {PROVIDERS.map((p) => (
                       <SelectItem key={p} value={p}>
-                        {ETIQUETAS_PROVEEDOR[p] ?? p}
+                        {providerLabel(p)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -486,7 +515,7 @@ export default function ModelProvidersManager() {
               </div>
 
               <div className="space-y-2">
-                <Label>Tipo de modelo</Label>
+                <Label>{t.configuration.models.fields.typeModel}</Label>
                 <Select
                   value={form.typeModel}
                   onValueChange={(val) => updateForm("typeModel", val)}
@@ -495,9 +524,9 @@ export default function ModelProvidersManager() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {TYPE_MODELS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
+                    {TYPE_MODELS.map((typeModel) => (
+                      <SelectItem key={typeModel} value={typeModel}>
+                        {typeModel}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -505,10 +534,14 @@ export default function ModelProvidersManager() {
               </div>
 
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="provider-model-name">ID del modelo</Label>
+                <Label htmlFor="provider-model-name">
+                  {t.configuration.models.fields.modelId}
+                </Label>
                 <Input
                   id="provider-model-name"
-                  placeholder="Ej: deepseek/deepseek-v4.1-flash, anthropic/claude-haiku-5.5"
+                  placeholder={
+                    t.configuration.models.fields.modelIdPlaceholder
+                  }
                   value={form.modelName}
                   onChange={(e) => updateForm("modelName", e.target.value)}
                   required
@@ -521,21 +554,24 @@ export default function ModelProvidersManager() {
                     htmlFor="provider-base-url"
                     className="flex items-center gap-1.5"
                   >
-                    <Globe className="w-3.5 h-3.5" /> URL base
+                    <Globe className="w-3.5 h-3.5" />{" "}
+                    {t.configuration.models.fields.baseUrl}
                   </Label>
                   <Input
                     id="provider-base-url"
                     placeholder={
                       URL_POR_DEFECTO[form.provider] ??
-                      "Ej: http://127.0.0.1:1234/v1"
+                      t.configuration.models.fields.baseUrlPlaceholder
                     }
                     value={form.baseUrl}
                     onChange={(e) => updateForm("baseUrl", e.target.value)}
                   />
                   {URL_POR_DEFECTO[form.provider] && !form.baseUrl.trim() && (
                     <p className="text-[11px] text-muted-foreground">
-                      Endpoint por defecto de{" "}
-                      {ETIQUETAS_PROVEEDOR[form.provider] ?? form.provider}:{" "}
+                      {interp(
+                        t.configuration.models.fields.defaultEndpoint,
+                        { provider: providerLabel(form.provider) },
+                      )}{" "}
                       <code className="font-mono">{URL_POR_DEFECTO[form.provider]}</code>
                     </p>
                   )}
@@ -547,8 +583,11 @@ export default function ModelProvidersManager() {
                   htmlFor="provider-api-key"
                   className="flex items-center gap-1.5"
                 >
-                  <Key className="w-3.5 h-3.5" /> API Key{" "}
-                  {isLocalSelected ? "(opcional)" : ""}
+                  <Key className="w-3.5 h-3.5" />{" "}
+                  {t.configuration.models.fields.apiKey}{" "}
+                  {isLocalSelected
+                    ? t.configuration.models.fields.apiKeyOptional
+                    : ""}
                 </Label>
                 <Input
                   id="provider-api-key"
@@ -556,8 +595,8 @@ export default function ModelProvidersManager() {
                   autoComplete="off"
                   placeholder={
                     form.id
-                      ? "[configured] — deja vacío para conservar la actual"
-                      : "sk-..."
+                      ? t.configuration.models.fields.apiKeyPlaceholderEdit
+                      : t.configuration.models.fields.apiKeyPlaceholderNew
                   }
                   value={form.apiKey}
                   onChange={(e) => updateForm("apiKey", e.target.value)}
@@ -565,7 +604,9 @@ export default function ModelProvidersManager() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="provider-temperature">Temperatura</Label>
+                <Label htmlFor="provider-temperature">
+                  {t.configuration.models.fields.temperature}
+                </Label>
                 <Input
                   id="provider-temperature"
                   type="number"
@@ -580,10 +621,14 @@ export default function ModelProvidersManager() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="provider-permissions">Permisos</Label>
+                <Label htmlFor="provider-permissions">
+                  {t.configuration.models.fields.permissions}
+                </Label>
                 <Input
                   id="provider-permissions"
-                  placeholder="USER,STAFF,ADMIN (opcional)"
+                  placeholder={
+                    t.configuration.models.fields.permissionsPlaceholder
+                  }
                   value={form.userPermission}
                   onChange={(e) => updateForm("userPermission", e.target.value)}
                 />
@@ -591,9 +636,11 @@ export default function ModelProvidersManager() {
 
               <div className="flex items-center justify-between rounded-lg border border-border p-3 sm:col-span-2">
                 <div>
-                  <p className="text-sm font-medium">Activo</p>
+                  <p className="text-sm font-medium">
+                    {t.configuration.models.fields.active}
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Los modelos inactivos no se asignan al agente.
+                    {t.configuration.models.fields.activeHint}
                   </p>
                 </div>
                 <Switch
@@ -601,7 +648,7 @@ export default function ModelProvidersManager() {
                   onCheckedChange={(checked: boolean) =>
                     updateForm("isActive", checked)
                   }
-                  aria-label="Activar modelo"
+                  aria-label={t.configuration.models.fields.activeAria}
                 />
               </div>
             </div>
@@ -619,7 +666,9 @@ export default function ModelProvidersManager() {
                 ) : (
                   <PlugZap className="w-4 h-4" />
                 )}
-                {testing ? "Probando…" : "Probar Conexión"}
+                {testing
+                  ? t.configuration.models.testing
+                  : t.configuration.models.test}
               </Button>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button
@@ -628,7 +677,7 @@ export default function ModelProvidersManager() {
                   onClick={() => setIsDialogOpen(false)}
                   className="flex-1 sm:flex-none"
                 >
-                  Cancelar
+                  {t.configuration.models.cancel}
                 </Button>
                 <Button
                   type="submit"
@@ -636,7 +685,7 @@ export default function ModelProvidersManager() {
                   className="flex-1 sm:flex-none gap-2"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Guardar Configuración
+                  {t.configuration.models.save}
                 </Button>
               </div>
             </DialogFooter>

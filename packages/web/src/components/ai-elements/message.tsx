@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
@@ -259,10 +260,11 @@ export const MessageBranchPrevious = ({
   ...props
 }: MessageBranchPreviousProps) => {
   const { goToPrevious, totalBranches } = useMessageBranch();
+  const t = useT();
 
   return (
     <Button
-      aria-label="Previous branch"
+      aria-label={t.chat.streamdown.previousBranch}
       disabled={totalBranches <= 1}
       onClick={goToPrevious}
       size="icon-sm"
@@ -282,10 +284,11 @@ export const MessageBranchNext = ({
   ...props
 }: MessageBranchNextProps) => {
   const { goToNext, totalBranches } = useMessageBranch();
+  const t = useT();
 
   return (
     <Button
-      aria-label="Next branch"
+      aria-label={t.chat.streamdown.nextBranch}
       disabled={totalBranches <= 1}
       onClick={goToNext}
       size="icon-sm"
@@ -334,51 +337,54 @@ const streamdownControls: ControlsConfig = {
 
 };
 
-const streamdownTranslations: Partial<StreamdownTranslations> = {
-  close: "Cerrar",
-  copied: "Copiado",
-  copyCode: "Copiar código",
-  copyLink: "Copiar enlace",
-  copyTable: "Copiar tabla",
-  copyTableAsCsv: "Copiar tabla como CSV",
-  copyTableAsMarkdown: "Copiar tabla como Markdown",
-  copyTableAsTsv: "Copiar tabla como TSV",
-  downloadDiagram: "Descargar diagrama",
-  downloadDiagramAsMmd: "Descargar diagrama como MMD",
-  downloadDiagramAsPng: "Descargar diagrama como PNG",
-  downloadDiagramAsSvg: "Descargar diagrama como SVG",
-  downloadFile: "Descargar archivo",
-  downloadImage: "Descargar imagen",
-  downloadTable: "Descargar tabla",
-  downloadTableAsCsv: "Descargar tabla como CSV",
-  downloadTableAsMarkdown: "Descargar tabla como Markdown",
-  exitFullscreen: "Salir de pantalla completa",
-  externalLinkWarning: "Vas a visitar un sitio externo.",
-  imageNotAvailable: "Imagen no disponible",
-  mermaidFormatMmd: "MMD",
-  mermaidFormatPng: "PNG",
-  mermaidFormatSvg: "SVG",
-  openExternalLink: "¿Abrir enlace externo?",
-  openLink: "Abrir enlace",
-  tableFormatCsv: "CSV",
-  tableFormatMarkdown: "Markdown",
-  tableFormatTsv: "TSV",
-  viewFullscreen: "Ver en pantalla completa",
-};
-
 export const MessageResponse = memo(
-  ({ className, controls, translations, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className,
-      )}
-      controls={controls ?? streamdownControls}
-      plugins={streamdownPlugins}
-      translations={{ ...streamdownTranslations, ...translations }}
-      {...props}
-    />
-  ),
+  ({ className, controls, translations, ...props }: MessageResponseProps) => {
+    const t = useT().chat.streamdown;
+    const streamdownTranslations: Partial<StreamdownTranslations> = {
+      close: t.close,
+      copied: t.copied,
+      copyCode: t.copyCode,
+      copyLink: t.copyLink,
+      copyTable: t.copyTable,
+      copyTableAsCsv: t.copyTableAsCsv,
+      copyTableAsMarkdown: t.copyTableAsMarkdown,
+      copyTableAsTsv: t.copyTableAsTsv,
+      downloadDiagram: t.downloadDiagram,
+      downloadDiagramAsMmd: t.downloadDiagramAsMmd,
+      downloadDiagramAsPng: t.downloadDiagramAsPng,
+      downloadDiagramAsSvg: t.downloadDiagramAsSvg,
+      downloadFile: t.downloadFile,
+      downloadImage: t.downloadImage,
+      downloadTable: t.downloadTable,
+      downloadTableAsCsv: t.downloadTableAsCsv,
+      downloadTableAsMarkdown: t.downloadTableAsMarkdown,
+      exitFullscreen: t.exitFullscreen,
+      externalLinkWarning: t.externalLinkWarning,
+      imageNotAvailable: t.imageNotAvailable,
+      mermaidFormatMmd: "MMD",
+      mermaidFormatPng: "PNG",
+      mermaidFormatSvg: "SVG",
+      openExternalLink: t.openExternalLink,
+      openLink: t.openLink,
+      tableFormatCsv: "CSV",
+      tableFormatMarkdown: "Markdown",
+      tableFormatTsv: "TSV",
+      viewFullscreen: t.viewFullscreen,
+    };
+
+    return (
+      <Streamdown
+        className={cn(
+          "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          className,
+        )}
+        controls={controls ?? streamdownControls}
+        plugins={streamdownPlugins}
+        translations={{ ...streamdownTranslations, ...translations }}
+        {...props}
+      />
+    );
+  },
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
     nextProps.isAnimating === prevProps.isAnimating,

@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import LogTable from "./table/LogTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import type { LogEntry } from "@/service/LogService";
 import { clearLogsAction, deleteLogAction } from "@/action/LogAction";
 import { Download, Eraser, Info, ListChecks, Search } from "lucide-react";
 import { NIVELES_LOG_POR_DEFECTO } from "./levels";
+import { useT } from "@/hooks/useT";
 
 const TODOS = "__todos__";
 
@@ -65,6 +67,7 @@ export default function TableLogWrapper({
   isAdmin,
   levels,
 }: TableLogWrapperProps) {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchText, setSearchText] = useState("");
@@ -120,7 +123,7 @@ export default function TableLogWrapper({
         log.level,
         log.title ?? "",
         log.content,
-        log.actor?.username ?? "Sistema",
+        log.actor?.username ?? t.logs.row.system,
         log.actor?.role ?? "",
       ]
         .map((cell) => csvCell(String(cell)))
@@ -136,10 +139,10 @@ export default function TableLogWrapper({
   const handleClearLogs = async () => {
     const result = await clearLogsAction();
     if (!result.success) {
-      toast.error(result.message || "Error al vaciar el historial.");
+      notifyError(result.message || t.logs.toasts.clearError);
       return;
     }
-    toast.success(result.message || "Historial vaciado.");
+    toast.success(result.message || t.logs.toasts.cleared);
     setIsClearDialogOpen(false);
     router.refresh();
   };
@@ -147,10 +150,10 @@ export default function TableLogWrapper({
   const handleDeleteLog = async (id: string) => {
     const result = await deleteLogAction(id);
     if (!result.success) {
-      toast.error(result.message || "Error al eliminar el log.");
+      notifyError(result.message || t.logs.toasts.deleteError);
       return;
     }
-    toast.success(result.message || "Log eliminado.");
+    toast.success(result.message || t.logs.toasts.deleted);
     router.refresh();
   };
 
@@ -161,10 +164,10 @@ export default function TableLogWrapper({
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <ListChecks className="h-5 w-5 text-primary" />
-            Registros
+            {t.logs.header.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Historial de eventos del sistema y de la traza del agente.
+            {t.logs.header.description}
           </p>
         </div>
 
@@ -173,16 +176,16 @@ export default function TableLogWrapper({
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="space-y-1.5">
-            <Label htmlFor="log-level-filter">Nivel</Label>
+            <Label htmlFor="log-level-filter">{t.logs.filters.level}</Label>
             <Select
               value={currentLevel || TODOS}
               onValueChange={handleLevelChange}
             >
               <SelectTrigger id="log-level-filter" className="w-full sm:w-48">
-                <SelectValue placeholder="Filtrar por nivel" />
+                <SelectValue placeholder={t.logs.filters.levelPlaceholder} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={TODOS}>TODOS</SelectItem>
+                <SelectItem value={TODOS}>{t.logs.filters.all}</SelectItem>
                 {nivelesDisponibles.map((level) => (
                   <SelectItem key={level} value={level}>
                     {level}
@@ -193,12 +196,12 @@ export default function TableLogWrapper({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="log-search">Buscar</Label>
+            <Label htmlFor="log-search">{t.logs.filters.search}</Label>
             <div className="relative">
               <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="log-search"
-                placeholder="Buscar en la página actual..."
+                placeholder={t.logs.filters.searchPlaceholder}
                 className="pl-8 sm:w-64"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -214,7 +217,7 @@ export default function TableLogWrapper({
             onClick={handleExportJson}
             className="gap-2"
           >
-            <Download className="h-4 w-4" /> Exportar JSON
+            <Download className="h-4 w-4" /> {t.logs.actions.exportJson}
           </Button>
           <Button
             variant="outline"
@@ -222,7 +225,7 @@ export default function TableLogWrapper({
             onClick={handleExportCsv}
             className="gap-2"
           >
-            <Download className="h-4 w-4" /> Exportar CSV
+            <Download className="h-4 w-4" /> {t.logs.actions.exportCsv}
           </Button>
           {isAdmin && (
             <Button
@@ -231,7 +234,7 @@ export default function TableLogWrapper({
               className="gap-2"
               onClick={() => setIsClearDialogOpen(true)}
             >
-              <Eraser className="h-4 w-4" /> Vaciar historial
+              <Eraser className="h-4 w-4" /> {t.logs.actions.clear}
             </Button>
           )}
         </div>
@@ -241,8 +244,7 @@ export default function TableLogWrapper({
         <p className="flex items-start gap-1.5 text-xs text-muted-foreground px-1">
           <Info className="h-3.5 w-3.5 mt-px shrink-0" />
           <span>
-            Solo ves tus propios registros. Como administrador, el listado
-            incluye los de todos los usuarios y las ejecuciones programadas.
+            {t.logs.info}
           </span>
         </p>
       )}
@@ -258,21 +260,20 @@ export default function TableLogWrapper({
       <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Vaciar historial de logs</DialogTitle>
+            <DialogTitle>{t.logs.clearDialog.title}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Se eliminarán todos los registros del sistema de forma permanente.
-            Esta acción no se puede deshacer.
+            {t.logs.clearDialog.description}
           </p>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setIsClearDialogOpen(false)}
             >
-              Cancelar
+              {t.logs.clearDialog.cancel}
             </Button>
             <Button variant="destructive" onClick={handleClearLogs}>
-              Vaciar todo
+              {t.logs.clearDialog.confirm}
             </Button>
           </DialogFooter>
         </DialogContent>

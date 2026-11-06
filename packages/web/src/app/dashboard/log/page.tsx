@@ -1,13 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import TableLogWrapper from "@/component/log/TableLogWrapper";
 import { NIVELES_LOG_POR_DEFECTO } from "@/component/log/levels";
 import { getSessionUser } from "@/action/SecureAction";
 import { getAllLogsAction, getLogLevelsAction } from "@/action/LogAction";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools -  Logs",
-  description: "Historial de eventos generados en la red",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.log.title}`,
+    description: t.dashboard.metadata.log.description,
+  };
+}
 
 interface PageProps {
   searchParams: Promise<{ page?: string; limit?: string; level?: string }>;

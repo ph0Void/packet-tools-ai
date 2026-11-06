@@ -1,24 +1,27 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { MANUAL_SECTIONS } from "./manual/sections";
+import { useT } from "@/hooks/useT";
+import { getManualSections } from "./manual/sections";
 
 export default function UserManual() {
+  const t = useT();
+  const sections = useMemo(() => getManualSections(t), [t]);
   const [query, setQuery] = useState("");
   const [isIndexOpen, setIsIndexOpen] = useState(false);
-  const [activeId, setActiveId] = useState<string>(MANUAL_SECTIONS[0]?.id ?? "");
+  const [activeId, setActiveId] = useState<string>(sections[0]?.id ?? "");
 
   const normalized = query.trim().toLowerCase();
   const filtered = normalized
-    ? MANUAL_SECTIONS.filter((section) =>
+    ? sections.filter((section) =>
         [section.title, section.description, ...section.keywords].some(
           (value) => value.toLowerCase().includes(normalized),
         ),
       )
-    : MANUAL_SECTIONS;
+    : sections;
 
   useEffect(() => {
     if (normalized) return;
@@ -34,12 +37,12 @@ export default function UserManual() {
       },
       { rootMargin: "-90px 0px -65% 0px", threshold: 0 },
     );
-    for (const section of MANUAL_SECTIONS) {
+    for (const section of sections) {
       const node = document.getElementById(section.id);
       if (node) observer.observe(node);
     }
     return () => observer.disconnect();
-  }, [normalized]);
+  }, [normalized, sections]);
 
   const goTo = (id: string) => {
     setActiveId(id);
@@ -58,19 +61,18 @@ export default function UserManual() {
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold tracking-tight">
-              Centro de Documentación
+              {t.manual.page.title}
             </h2>
             <p className="text-xs text-muted-foreground">
-              Guía paso a paso de todas las pestañas del sistema, con
-              referencias rápidas para operadores de red.
+              {t.manual.page.subtitle}
             </p>
             <div className="relative mt-4 max-w-md">
               <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar en el manual..."
-                aria-label="Buscar en el manual"
+                placeholder={t.manual.page.searchPlaceholder}
+                aria-label={t.manual.page.searchAria}
                 className="pl-9"
               />
             </div>
@@ -86,7 +88,9 @@ export default function UserManual() {
           aria-controls="manual-index"
           className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-card p-4 text-left shadow-sm"
         >
-          <span className="text-sm font-semibold">Índice del manual</span>
+          <span className="text-sm font-semibold">
+            {t.manual.page.index}
+          </span>
           <ChevronDown
             className={cn(
               "h-4 w-4 text-muted-foreground transition-transform duration-200",
@@ -118,7 +122,7 @@ export default function UserManual() {
         <aside className="hidden lg:block">
           <nav className="sticky top-6 space-y-1 rounded-xl border border-border bg-card p-2 shadow-sm">
             <p className="px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">
-              Secciones
+              {t.manual.page.sections}
             </p>
             {filtered.map((section) => (
               <button
@@ -143,7 +147,7 @@ export default function UserManual() {
         <div className="min-w-0 space-y-6">
           {filtered.length === 0 && (
             <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-sm">
-              No se encontraron secciones para{" "}
+              {t.manual.page.noResultsPrefix}{" "}
               <span className="font-medium text-foreground">
                 &quot;{query.trim()}&quot;
               </span>

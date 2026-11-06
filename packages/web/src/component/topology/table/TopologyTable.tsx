@@ -1,6 +1,8 @@
 "use client";
 
 import TopologyItems from "./TopologyItems";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import type { TopologyRow } from "../types";
 
 interface TopologyTableProps {
@@ -25,6 +27,7 @@ export default function TopologyTable({
   onEdit,
   onDelete,
 }: TopologyTableProps) {
+  const t = useT();
   const { currentPage, totalPages, totalItems } = paginationData;
 
   return (
@@ -33,10 +36,12 @@ export default function TopologyTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-muted-foreground uppercase text-xs font-semibold tracking-wider">
-              <th className="py-3.5 px-6">Nombre</th>
-              <th className="py-3.5 px-6">Descripción</th>
-              <th className="py-3.5 px-6">Fecha de creación</th>
-              <th className="py-3.5 px-6 text-right">Acciones</th>
+              <th className="py-3.5 px-6">{t.topology.table.name}</th>
+              <th className="py-3.5 px-6">{t.topology.table.description}</th>
+              <th className="py-3.5 px-6">{t.topology.table.createdAt}</th>
+              <th className="py-3.5 px-6 text-right">
+                {t.topology.table.actions}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -56,7 +61,7 @@ export default function TopologyTable({
                   colSpan={4}
                   className="py-8 text-center text-sm text-muted-foreground bg-card"
                 >
-                  No se encontraron topologías disponibles.
+                  {t.topology.table.empty}
                 </td>
               </tr>
             )}
@@ -66,8 +71,10 @@ export default function TopologyTable({
 
       <div className="flex items-center justify-between pt-2 px-1">
         <p className="text-xs text-muted-foreground">
-          Mostrando <span className="font-medium">{topologies.length}</span> de{" "}
-          <span className="font-medium">{totalItems}</span> topologías
+          {interp(t.topology.table.showing, {
+            count: topologies.length,
+            total: totalItems,
+          })}
         </p>
 
         <div className="flex space-x-2">
@@ -76,11 +83,14 @@ export default function TopologyTable({
             disabled={currentPage <= 1}
             className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
-            Anterior
+            {t.topology.table.previous}
           </button>
 
           <span className="inline-flex items-center justify-center px-3 text-xs text-muted-foreground">
-            Pág. {currentPage} de {totalPages}
+            {interp(t.topology.table.page, {
+              page: currentPage,
+              total: totalPages,
+            })}
           </span>
 
           <button
@@ -88,7 +98,7 @@ export default function TopologyTable({
             disabled={currentPage >= totalPages}
             className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
-            Siguiente
+            {t.topology.table.next}
           </button>
         </div>
       </div>

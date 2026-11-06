@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity, Edit2, Loader2, Save, Terminal, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import type { DeviceProvider } from "@/service/DeviceProviderService";
 
 interface DeviceItemsProps {
@@ -56,6 +58,7 @@ export default function DeviceItems({
   onTest,
   onKeep,
 }: DeviceItemsProps) {
+  const t = useT();
   const handleLaunchTerminal = () => {
     sessionStorage.setItem("pt-selected-device", device.id);
   };
@@ -74,7 +77,7 @@ export default function DeviceItems({
               variant="outline"
               className="h-4 border-amber-500/40 bg-amber-500/10 px-1.5 text-[9px] font-medium text-amber-600 dark:text-amber-400"
             >
-              Temporal
+              {t.devices.list.temporary}
             </Badge>
           )}
         </span>
@@ -113,7 +116,7 @@ export default function DeviceItems({
           <Button asChild variant="outline" size="sm" className="h-7 gap-1 text-xs cursor-pointer">
             <Link href="/dashboard/terminal" onClick={handleLaunchTerminal}>
               <Terminal />
-              Terminal
+              {t.devices.list.terminal}
             </Link>
           </Button>
 
@@ -124,8 +127,10 @@ export default function DeviceItems({
                   variant="ghost"
                   size="icon-sm"
                   className="cursor-pointer"
-                  aria-label={`Guardar ${device.name} como permanente`}
-                  title="Guardar como permanente"
+                  aria-label={interp(t.devices.list.actions.keepAria, {
+                    name: device.name,
+                  })}
+                  title={t.devices.list.actions.keep}
                   onClick={() => onKeep(device)}
                 >
                   <Save />
@@ -135,8 +140,8 @@ export default function DeviceItems({
                 variant="ghost"
                 size="icon-sm"
                 className="cursor-pointer"
-                aria-label="Probar conexión"
-                title="Probar conexión"
+                aria-label={t.devices.list.actions.test}
+                title={t.devices.list.actions.test}
                 onClick={() => onTest(device)}
                 disabled={testing}
               >
@@ -146,8 +151,10 @@ export default function DeviceItems({
                 variant="ghost"
                 size="icon-sm"
                 className="cursor-pointer"
-                aria-label={`Editar ${device.name}`}
-                title="Editar dispositivo"
+                aria-label={interp(t.devices.list.actions.editAria, {
+                  name: device.name,
+                })}
+                title={t.devices.list.actions.edit}
                 onClick={() => onEdit(device)}
               >
                 <Edit2 />
@@ -156,8 +163,10 @@ export default function DeviceItems({
                 variant="ghost"
                 size="icon-sm"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-                aria-label={`Eliminar ${device.name}`}
-                title="Eliminar dispositivo"
+                aria-label={interp(t.devices.list.actions.deleteAria, {
+                  name: device.name,
+                })}
+                title={t.devices.list.actions.delete}
                 onClick={() => onDelete(device)}
               >
                 <Trash2 />

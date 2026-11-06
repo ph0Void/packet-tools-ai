@@ -1,13 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/action/SecureAction";
 import { getAllUsers } from "@/service/UserService";
 import TableUserWrapper from "@/component/user/TableUserWrapper";
 import type { UserTypes } from "@/types/User";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Usuarios",
-  description: "Directorio de operadores del NOC",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.users.title}`,
+    description: t.dashboard.metadata.users.description,
+  };
+}
 
 interface PageProps {
   searchParams: Promise<{ page?: string; limit?: string }>;

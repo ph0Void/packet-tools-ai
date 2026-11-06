@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, ChevronDown, ListTodo, LoaderCircle } from "lucide-react";
 import type { PlanTodo } from "@/hooks/useCiscoChat";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 
 export function PlanTodos({
   todos,
@@ -15,6 +16,7 @@ export function PlanTodos({
   defaultOpen?: boolean;
 }) {
   const [abierto, setAbierto] = useState(defaultOpen);
+  const t = useT();
   if (todos.length === 0) return null;
 
   const completados = todos.filter((t) => t.status === "completed").length;
@@ -35,7 +37,7 @@ export function PlanTodos({
       >
         <ListTodo className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.105em] text-muted-foreground">
-          Plan
+          {t.chat.todos.title}
         </span>
         <span className="font-mono text-[10.5px] text-muted-foreground">
           {completados}/{todos.length}

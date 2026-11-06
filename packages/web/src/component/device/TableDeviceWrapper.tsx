@@ -2,9 +2,13 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, Network, Plus, ShieldAlert } from "lucide-react";
+import { Network, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import { Button } from "@/components/ui/button";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import DeviceTable from "./table/DeviceTable";
 import DeviceFormDialog from "./DeviceFormDialog";
 import ConfirmDialog from "@/component/ui/ConfirmDialog";
@@ -26,6 +30,7 @@ export default function TableDeviceWrapper({
   devices,
   canManage,
 }: TableDeviceWrapperProps) {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isDeletePending, startDeleteTransition] = useTransition();
@@ -76,14 +81,14 @@ export default function TableDeviceWrapper({
       try {
         const result = await deleteDeviceProviderAction(target.id);
         if (result.success) {
-          toast.success(result.message || "Dispositivo eliminado.");
+          toast.success(result.message || t.devices.list.toasts.deleted);
           setDeletingDevice(null);
           router.refresh();
         } else {
-          toast.error(result.message || "No se pudo eliminar el dispositivo.");
+          notifyError(result.message || t.devices.list.toasts.deleteFailed);
         }
       } catch {
-        toast.error("Error al procesar la eliminación.");
+        notifyError(t.devices.list.toasts.deleteError);
       }
     });
   };
@@ -97,7 +102,7 @@ export default function TableDeviceWrapper({
       if (result.success) {
         toast.success(result.message);
       } else {
-        toast.error(result.message);
+        notifyError(result.message);
       }
     } finally {
       setTestingId(null);
@@ -109,15 +114,14 @@ export default function TableDeviceWrapper({
       const nombre = device.name.replace(/\s*\(temporal\)\s*$/i, "");
       const result = await keepDeviceProviderAction(device.id, nombre);
       if (result.success) {
-        toast.success(
-          result.message || "Dispositivo guardado como permanente.",
-        );
+        toast.success(result.message || t.devices.list.toasts.kept);
+        playSound("update");
         router.refresh();
       } else {
-        toast.error(result.message || "No se pudo guardar el dispositivo.");
+        notifyError(result.message || t.devices.list.toasts.keepFailed);
       }
     } catch {
-      toast.error("Error al guardar el dispositivo.");
+      notifyError(t.devices.list.toasts.keepError);
     }
   };
 
@@ -128,10 +132,10 @@ export default function TableDeviceWrapper({
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Network className="h-5 w-5 text-primary" />
-            Conexiones
+            {t.devices.list.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Gestione los equipos y proveedores de conexión
+            {t.devices.list.subtitle}
           </p>
         </div>
 
@@ -141,7 +145,7 @@ export default function TableDeviceWrapper({
             className="gap-2 self-start sm:self-auto shrink-0"
           >
             <Plus className="w-4 h-4" />
-            Nueva Conexión
+            {t.devices.list.new}
           </Button>
         )}
       </div>
@@ -175,9 +179,11 @@ export default function TableDeviceWrapper({
       <ConfirmDialog
         open={!!deletingDevice}
         onOpenChange={(open) => !open && setDeletingDevice(null)}
-        title={`Eliminar ${deletingDevice?.name ?? "dispositivo"}`}
-        description="Se eliminará el dispositivo y sus credenciales. Esta acción no se puede deshacer."
-        confirmLabel="Eliminar"
+        title={interp(t.devices.list.deleteTitle, {
+          name: deletingDevice?.name ?? t.devices.list.deleteFallbackName,
+        })}
+        description={t.devices.list.deleteDescription}
+        confirmLabel={t.devices.list.deleteConfirm}
         destructive
         pending={isDeletePending}
         onConfirm={handleConfirmDelete}

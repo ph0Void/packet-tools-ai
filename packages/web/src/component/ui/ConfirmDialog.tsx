@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useT } from "@/hooks/useT";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,12 +30,14 @@ export default function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirmar",
-  cancelLabel = "Cancelar",
+  confirmLabel,
+  cancelLabel,
   destructive = false,
   pending = false,
   onConfirm,
 }: ConfirmDialogProps) {
+  const t = useT();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm" showCloseButton={false}>
@@ -49,7 +52,7 @@ export default function ConfirmDialog({
             onClick={() => onOpenChange(false)}
             disabled={pending}
           >
-            {cancelLabel}
+            {cancelLabel ?? t.common.cancel}
           </Button>
           <Button
             type="button"
@@ -58,7 +61,7 @@ export default function ConfirmDialog({
             disabled={pending}
           >
             {pending && <Loader2 data-icon="inline-start" />}
-            {confirmLabel}
+            {confirmLabel ?? t.common.confirm}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,12 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/action/SecureAction";
 import ChatPrincipalWraper from "@/component/chat/ChatPrincipalWraper";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Chat",
-  description:
-    "Chat agéntico multimodal, donde tu asistente virtual te ayudará en tu trabajo con la configuración de dispositivos, comandos, logs y alertas",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.chat.title}`,
+    description: t.dashboard.metadata.chat.description,
+  };
+}
 
 export default async function ChatPage() {
   const user = await getSessionUser();

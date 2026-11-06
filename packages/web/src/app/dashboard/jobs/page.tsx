@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import CronJobManager from "@/component/jobs/CronJobManager";
 import type { CronJobRow } from "@/component/jobs/CronJobManager";
@@ -5,12 +6,15 @@ import { getSessionUser } from "@/action/SecureAction";
 import { getJobs } from "@/service/CronJobService";
 import { getTopologies } from "@/service/TopologyService";
 import { getDevices } from "@/service/DeviceProviderService";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Automatización",
-  description:
-    "Gestión y programación de automatizaciones de red con IA o scripts manuales.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.jobs.title}`,
+    description: t.dashboard.metadata.jobs.description,
+  };
+}
 
 export default async function PageCronJobs() {
   const user = await getSessionUser();

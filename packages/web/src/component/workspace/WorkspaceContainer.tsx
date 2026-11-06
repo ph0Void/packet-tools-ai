@@ -21,6 +21,10 @@ import { saveTopologyAction } from "@/action/TopologyAction";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -64,6 +68,7 @@ export default function WorkspaceContainer({
   initialLinks = [],
   canEdit = false,
 }: WorkspaceContainerProps) {
+  const t = useT();
   const router = useRouter();
   const { status, emitToolCall } = useCiscoSocket();
 
@@ -134,35 +139,34 @@ export default function WorkspaceContainer({
       const live = extractLiveTopology(payload);
 
       if (live.devices.length === 0 && live.links.length === 0) {
-        toast.warning(
-          "Packet Tracer no reporta una topología activa (0 dispositivos)"
-        );
+        toast.warning(t.workspace.toasts.emptyLive);
         return;
       }
 
       setTopology({ devices: live.devices, links: live.links });
       toast.success(
-        `Sincronizado: ${live.devices.length} dispositivos, ${live.links.length} enlaces`
+        interp(t.workspace.toasts.synced, {
+          devices: live.devices.length,
+          links: live.links.length,
+        })
       );
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "No se pudo sincronizar con Packet Tracer"
+      notifyError(
+        error instanceof Error ? error.message : t.workspace.toasts.syncError
       );
     } finally {
       setIsSyncing(false);
     }
-  }, [emitToolCall, setTopology]);
+  }, [emitToolCall, setTopology, t]);
 
   const handleSaveTopology = async () => {
     if (!name.trim()) {
-      toast.error("Por favor ingresa un nombre para la topología");
+      notifyError(t.workspace.toasts.nameRequired);
       return;
     }
     if (devices.length === 0 && links.length === 0) {
-      toast.error("No hay nada que guardar: el lienzo está vacío");
+      notifyError(t.workspace.toasts.emptyCanvas);
       return;
     }
 
@@ -177,18 +181,19 @@ export default function WorkspaceContainer({
       );
 
       if (result.success) {
-        toast.success(result.message || "Topología guardada con éxito");
+        toast.success(result.message || t.workspace.toasts.saved);
+        playSound(topologyId ? "update" : "create");
         setIsSaveOpen(false);
         router.refresh();
         if (!topologyId && result.data?.id) {
           router.push(`/dashboard/workspace/${result.data.id}`);
         }
       } else {
-        toast.error(result.message || "Error al guardar la topología");
+        notifyError(result.message || t.workspace.toasts.saveError);
       }
     } catch (error) {
       console.error(error);
-      toast.error("Error inesperado al guardar la topología");
+      notifyError(t.workspace.toasts.saveUnexpected);
     } finally {
       setIsSaving(false);
     }
@@ -197,8 +202,8 @@ export default function WorkspaceContainer({
   const handleClearCanvas = useCallback(() => {
     clearStore();
     setSelectedDeviceId(null);
-    toast.success("Lienzo limpiado");
-  }, [clearStore, setSelectedDeviceId]);
+    toast.success(t.workspace.toasts.cleared);
+  }, [clearStore, setSelectedDeviceId, t]);
 
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden bg-background text-foreground">
@@ -207,12 +212,14 @@ export default function WorkspaceContainer({
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
             <Link href="/dashboard/topology">
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">Volver a topologías</span>
+              <span className="sr-only">
+                {t.workspace.header.backToTopologies}
+              </span>
             </Link>
           </Button>
           <div className="min-w-0">
             <h1 className="text-sm font-bold truncate max-w-[180px] sm:max-w-xs">
-              {name || "Nueva Topología"}
+              {name || t.workspace.header.newTopology}
             </h1>
             {description ? (
               <p className="text-[10px] text-muted-foreground truncate max-w-[180px] sm:max-w-xs">
@@ -238,7 +245,9 @@ export default function WorkspaceContainer({
               ) : (
                 <RefreshCw className="h-3 w-3" />
               )}
-              <span className="hidden md:inline">Sincronizar Live</span>
+              <span className="hidden md:inline">
+                {t.workspace.header.syncLive}
+              </span>
             </Button>
           )}
 
@@ -247,11 +256,11 @@ export default function WorkspaceContainer({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              title="Recargar topología desde la base de datos"
+              title={t.workspace.header.reloadTitle}
               onClick={() => router.refresh()}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              <span className="sr-only">Recargar desde la base de datos</span>
+              <span className="sr-only">{t.workspace.header.reloadSr}</span>
             </Button>
           )}
 
@@ -265,7 +274,9 @@ export default function WorkspaceContainer({
                 disabled={!hasInitialData && devices.length === 0}
               >
                 <Eraser className="h-3 w-3" />
-                <span className="hidden md:inline">Limpiar</span>
+                <span className="hidden md:inline">
+                  {t.workspace.header.clear}
+                </span>
               </Button>
 
               <Button
@@ -274,7 +285,11 @@ export default function WorkspaceContainer({
                 onClick={() => setIsSaveOpen(true)}
               >
                 <Save className="h-3.5 w-3.5" />
-                <span>{topologyId ? "Actualizar" : "Guardar Topología"}</span>
+                <span>
+                  {topologyId
+                    ? t.workspace.header.update
+                    : t.workspace.header.save}
+                </span>
               </Button>
             </>
           )}
@@ -322,7 +337,7 @@ export default function WorkspaceContainer({
         {!canEdit && (
           <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-card/80 backdrop-blur-sm text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             <Database className="h-3 w-3" />
-            Modo solo lectura
+            {t.workspace.header.readOnly}
           </div>
         )}
 
@@ -337,9 +352,9 @@ export default function WorkspaceContainer({
       <Dialog open={isSaveOpen} onOpenChange={setIsSaveOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Guardar Topología</DialogTitle>
+            <DialogTitle>{t.workspace.saveDialog.title}</DialogTitle>
             <DialogDescription>
-              Guarda el estado actual del diagrama de red en la base de datos.
+              {t.workspace.saveDialog.description}
             </DialogDescription>
           </DialogHeader>
 
@@ -349,13 +364,13 @@ export default function WorkspaceContainer({
                 htmlFor="topology-name"
                 className="text-xs font-semibold text-muted-foreground"
               >
-                Nombre de la Topología
+                {t.workspace.saveDialog.nameLabel}
               </label>
               <Input
                 id="topology-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ej. Topología de Laboratorio 1"
+                placeholder={t.workspace.saveDialog.namePlaceholder}
               />
             </div>
 
@@ -364,13 +379,13 @@ export default function WorkspaceContainer({
                 htmlFor="topology-description"
                 className="text-xs font-semibold text-muted-foreground"
               >
-                Descripción
+                {t.workspace.saveDialog.descriptionLabel}
               </label>
               <Textarea
                 id="topology-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe brevemente la configuración de red..."
+                placeholder={t.workspace.saveDialog.descriptionPlaceholder}
                 rows={3}
               />
             </div>
@@ -382,18 +397,18 @@ export default function WorkspaceContainer({
               onClick={() => setIsSaveOpen(false)}
               disabled={isSaving}
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
             <Button onClick={handleSaveTopology} disabled={isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
+                  {t.workspace.saveDialog.saving}
                 </>
               ) : topologyId ? (
-                "Confirmar Actualización"
+                t.workspace.saveDialog.confirmUpdate
               ) : (
-                "Confirmar Guardado"
+                t.workspace.saveDialog.confirmSave
               )}
             </Button>
           </DialogFooter>

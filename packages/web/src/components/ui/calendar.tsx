@@ -11,6 +11,8 @@ import {
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
+import { enUS, es as esLocale } from "date-fns/locale"
+import { useLocale } from "@/hooks/useT"
 
 function Calendar({
   className,
@@ -26,6 +28,8 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const { locale: uiLocale } = useLocale()
+  const activeLocale = locale ?? (uiLocale === "en" ? enUS : esLocale)
 
   return (
     <DayPicker
@@ -37,10 +41,10 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
-      locale={locale}
+      locale={activeLocale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(activeLocale?.code, { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -162,7 +166,7 @@ function Calendar({
           )
         },
         DayButton: ({ ...props }) => (
-          <CalendarDayButton locale={locale} {...props} />
+          <CalendarDayButton locale={activeLocale} {...props} />
         ),
         WeekNumber: ({ children, ...props }) => {
           return (

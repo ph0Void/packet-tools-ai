@@ -9,6 +9,7 @@ import {
   updateChatSelection,
   type ChatSelectionPayload,
 } from "@/service/ChatService";
+import { getServerDictionary } from "@/i18n/server";
 
 export type ChatActionState = {
   success: boolean;
@@ -17,10 +18,11 @@ export type ChatActionState = {
 };
 
 export async function getChatsAction(): Promise<ChatActionState> {
+  const t = await getServerDictionary();
   const result = await getChats();
   return {
     success: result.success,
-    message: result.message || "Chats obtenidos correctamente",
+    message: result.message || t.forms.chat.listFetched,
     data: result.data ?? [],
   };
 }
@@ -28,6 +30,8 @@ export async function getChatsAction(): Promise<ChatActionState> {
 export async function createChatAction(
   title?: string,
 ): Promise<ChatActionState> {
+  const t = await getServerDictionary();
+
   try {
     const result = await createChat(title);
 
@@ -38,22 +42,27 @@ export async function createChatAction(
     revalidatePath("/dashboard/chat");
     return {
       success: true,
-      message: "Chat creado correctamente",
+      message: t.forms.chat.created,
       data: result.data,
     };
   } catch (error) {
     console.error("Error al crear sesión de chat:", error);
-    return { success: false, message: "Error al crear sesión de chat", data: null };
+    return {
+      success: false,
+      message: t.forms.chat.createError,
+      data: null,
+    };
   }
 }
 
 export async function getChatMessages(
   chatId: string,
 ): Promise<ChatActionState> {
+  const t = await getServerDictionary();
   const result = await getMessages(chatId);
   return {
     success: result.success,
-    message: result.message || "Mensajes obtenidos",
+    message: result.message || t.forms.chat.messagesFetched,
     data: result.data ?? [],
   };
 }
@@ -62,6 +71,8 @@ export async function updateChatSelectionAction(
   chatId: string,
   payload: ChatSelectionPayload,
 ): Promise<ChatActionState> {
+  const t = await getServerDictionary();
+
   try {
     const result = await updateChatSelection(chatId, payload);
 
@@ -71,14 +82,14 @@ export async function updateChatSelectionAction(
 
     return {
       success: true,
-      message: result.message || "Selección del chat actualizada",
+      message: result.message || t.forms.chat.selectionUpdated,
       data: result.data,
     };
   } catch (error) {
     console.error("Error al actualizar la selección del chat:", error);
     return {
       success: false,
-      message: "No se pudo actualizar la selección del chat",
+      message: t.forms.chat.selectionError,
       data: null,
     };
   }
@@ -87,6 +98,8 @@ export async function updateChatSelectionAction(
 export async function deleteChatAction(
   chatId: string,
 ): Promise<ChatActionState> {
+  const t = await getServerDictionary();
+
   try {
     const result = await deleteChat(chatId);
 
@@ -95,12 +108,12 @@ export async function deleteChatAction(
     }
 
     revalidatePath("/dashboard/chat");
-    return { success: true, message: "Sesión de chat eliminada." };
+    return { success: true, message: t.forms.chat.deleted };
   } catch (error) {
     console.error("Error al eliminar sesión de chat:", error);
     return {
       success: false,
-      message: "No se pudo eliminar la sesión de chat seleccionada.",
+      message: t.forms.chat.deleteError,
     };
   }
 }

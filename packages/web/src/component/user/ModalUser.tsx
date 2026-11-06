@@ -4,7 +4,10 @@ import React, { startTransition, useActionState, useEffect, useState } from "rea
 import { registerUserAction, updateUserAction, FormUserState } from "@/action/UserAction";
 import { Shield, X, Eye, EyeOff, RefreshCw, UserPlus, Edit2 } from "lucide-react";
 import { UserTypes } from "@/types/User";
+import { useT } from "@/hooks/useT";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 
 interface ModalUserProps {
     isOpen: boolean;
@@ -20,6 +23,7 @@ const initialState: FormUserState = {
 };
 
 export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess }: ModalUserProps) {
+    const t = useT();
     const [showPassword, setShowPassword] = useState(false);
 
     const [createState, createFormAction, isCreatePending] = useActionState(registerUserAction, initialState);
@@ -33,10 +37,11 @@ export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess
 
         if (currentState.success) {
             toast.success(currentState.message);
+            playSound(mode === "create" ? "create" : "update");
             onSuccess();
             onClose();
         } else {
-            toast.error(currentState.message);
+            notifyError(currentState.message);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentState]);
@@ -69,7 +74,7 @@ export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess
 
                 <h3 className="text-lg font-bold text-foreground flex items-center gap-2 mb-4">
                     <Shield className="text-sky-500 w-5 h-5" />
-                    {mode === "create" ? "Registrar Nuevo Operador" : "Editar Operador"}
+                    {mode === "create" ? t.users.modal.createTitle : t.users.modal.editTitle}
                 </h3>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,13 +84,13 @@ export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess
 
                     <div>
                         <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                            Nombre de Usuario
+                            {t.users.modal.username}
                         </label>
                         <input
                             type="text"
                             name="username"
                             defaultValue={mode === "edit" && userToEdit ? userToEdit.username : ""}
-                            placeholder="Ej: admin_noc"
+                            placeholder={t.users.modal.usernamePlaceholder}
                             className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-60"
                             required
                             disabled={mode === "edit"}
@@ -94,14 +99,14 @@ export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess
 
                     <div>
                         <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5 flex justify-between">
-                            <span>Contraseña</span>
-                            {mode === "edit" && <span className="text-[10px] text-amber-500 font-normal normal-case">Dejar en blanco para no cambiar</span>}
+                            <span>{t.users.modal.password}</span>
+                            {mode === "edit" && <span className="text-[10px] text-amber-500 font-normal normal-case">{t.users.modal.keepPassword}</span>}
                         </label>
                         <div className="relative">
                             <input
                                 type={showPassword ? "text" : "password"}
                                 name="password"
-                                placeholder={mode === "edit" ? "••••••••" : "Ingrese una contraseña fuerte"}
+                                placeholder={mode === "edit" ? t.users.modal.passwordPlaceholder : t.users.modal.newPasswordPlaceholder}
                                 className="w-full pl-3 pr-10 py-2 bg-muted border border-border rounded-xl text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500"
                                 required={mode === "create"}
                             />
@@ -117,16 +122,16 @@ export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess
 
                     <div>
                         <label className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                            Rol del Sistema
+                            {t.users.modal.role}
                         </label>
                         <select
                             name="role"
                             defaultValue={mode === "edit" && userToEdit ? userToEdit.role : "USER"}
                             className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500"
                         >
-                            <option value="USER">USER (Acceso básico de consulta)</option>
-                            <option value="STAFF">STAFF (Monitoreo de red y soporte)</option>
-                            <option value="ADMIN">ADMIN (Control absoluto de sistema)</option>
+                            <option value="USER">{t.users.modal.roleUser}</option>
+                            <option value="STAFF">{t.users.modal.roleStaff}</option>
+                            <option value="ADMIN">{t.users.modal.roleAdmin}</option>
                         </select>
                     </div>
 
@@ -137,7 +142,7 @@ export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess
                             disabled={isPending}
                             className="px-4 py-2 text-xs font-semibold rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
                         >
-                            Cancelar
+                            {t.common.cancel}
                         </button>
                         <button
                             type="submit"
@@ -147,12 +152,12 @@ export default function ModalUser({ isOpen, onClose, mode, userToEdit, onSuccess
                             {isPending ? (
                                 <>
                                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    Procesando...
+                                    {t.users.modal.processing}
                                 </>
                             ) : (
                                 <>
                                     {mode === "create" ? <UserPlus className="w-3.5 h-3.5" /> : <Edit2 className="w-3.5 h-3.5" />}
-                                    {mode === "create" ? "Registrar" : "Guardar Cambios"}
+                                    {mode === "create" ? t.users.modal.register : t.users.modal.saveChanges}
                                 </>
                             )}
                         </button>

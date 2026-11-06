@@ -5,14 +5,12 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   BookOpen,
-  Cable,
   Clock,
   Database,
   LayoutDashboard,
   Logs,
   MessageCircleWarning,
   MessageSquare,
-  Network,
   Router,
   Settings,
   Sparkles,
@@ -23,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { useUiStore } from "@/store/uiStore";
+import { useT } from "@/hooks/useT";
 import { envConfig } from "@/config/EnvConfig";
 
 interface MenuItem {
@@ -31,37 +30,40 @@ interface MenuItem {
   icon: LucideIcon;
 }
 
-const MENU_ITEMS: MenuItem[] = [
-  { name: "Inicio", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Alertas", path: "/dashboard/alert", icon: MessageCircleWarning },
-  { name: "Chat", path: "/dashboard/chat", icon: MessageSquare },
-  { name: "Conexiones", path: "/dashboard/connection", icon: Router },
-  { name: "Terminal", path: "/dashboard/terminal", icon: Terminal },
-  { name: "Automatizaciones", path: "/dashboard/jobs", icon: Clock },
-  { name: "Skills", path: "/dashboard/skills", icon: Sparkles },
-  { name: "Logs", path: "/dashboard/log", icon: Logs },
-  { name: "Manual", path: "/dashboard/resources", icon: BookOpen },
-];
-
-const ADMIN_MENU_ITEMS: MenuItem[] = [
-  { name: "Datos", path: "/dashboard/data", icon: Database },
-  { name: "Usuarios", path: "/dashboard/users", icon: Users },
-  { name: "Configuración", path: "/dashboard/configuration", icon: Settings },
-];
-
 function isActivePath(pathname: string, itemPath: string): boolean {
   if (itemPath === "/dashboard") return pathname === "/dashboard";
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
 export default function SideBar() {
+  const t = useT();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const isMenuOpen = useUiStore((state) => state.isMenuOpen);
   const closeMenu = useUiStore((state) => state.closeMenu);
 
+  const menuItems: MenuItem[] = [
+    { name: t.nav.home, path: "/dashboard", icon: LayoutDashboard },
+    { name: t.nav.alerts, path: "/dashboard/alert", icon: MessageCircleWarning },
+    { name: t.nav.chat, path: "/dashboard/chat", icon: MessageSquare },
+    { name: t.nav.connections, path: "/dashboard/connection", icon: Router },
+    { name: t.nav.terminal, path: "/dashboard/terminal", icon: Terminal },
+    { name: t.nav.automations, path: "/dashboard/jobs", icon: Clock },
+    { name: t.nav.skills, path: "/dashboard/skills", icon: Sparkles },
+    { name: t.nav.logs, path: "/dashboard/log", icon: Logs },
+    { name: t.nav.manual, path: "/dashboard/resources", icon: BookOpen },
+    { name: t.nav.configuration, path: "/dashboard/configuration", icon: Settings },
+  ];
+
+  const adminMenuItems: MenuItem[] = [
+    { name: t.nav.data, path: "/dashboard/data", icon: Database },
+    { name: t.nav.users, path: "/dashboard/users", icon: Users },
+  ];
+
   const isAdmin = user?.role === "ADMIN";
-  const menuItems = isAdmin ? [...MENU_ITEMS, ...ADMIN_MENU_ITEMS] : MENU_ITEMS;
+  const visibleMenuItems = isAdmin
+    ? [...menuItems, ...adminMenuItems]
+    : menuItems;
 
   return (
     <>
@@ -101,10 +103,10 @@ export default function SideBar() {
         </div>
 
         <nav
-          aria-label="Navegación principal"
+          aria-label={t.nav.mainNavigation}
           className="custom-scrollbar min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5"
         >
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const isActive = isActivePath(pathname, item.path);
             const Icon = item.icon;
 
@@ -168,7 +170,7 @@ export default function SideBar() {
             {isMenuOpen && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[0.8125rem] font-semibold text-sidebar-foreground">
-                  {user?.username ?? "Invitado"}
+                  {user?.username ?? t.topbar.guest}
                 </p>
                 <p className="eyebrow mt-0.5">{user?.role ?? "—"}</p>
               </div>

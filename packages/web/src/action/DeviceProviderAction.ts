@@ -11,6 +11,7 @@ import type {
   DeviceProviderInput,
   DeviceTestInput,
 } from "@/service/DeviceProviderService";
+import { getServerDictionary } from "@/i18n/server";
 import type { FormState } from "@/types/actions";
 
 export type FormDeviceState = FormState;
@@ -19,6 +20,9 @@ export async function saveDeviceProviderAction(
   prevState: FormDeviceState,
   formData: FormData,
 ): Promise<FormDeviceState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.devices;
+
   try {
     const id = formData.get("id") as string;
     const name = (formData.get("name") as string)?.trim();
@@ -34,7 +38,7 @@ export async function saveDeviceProviderAction(
     if (!name) {
       return {
         success: false,
-        message: "El nombre del dispositivo es obligatorio.",
+        message: messages.nameRequired,
       };
     }
 
@@ -47,7 +51,7 @@ export async function saveDeviceProviderAction(
       if (!serialPort) {
         return {
           success: false,
-          message: "El puerto serial (COM / dispositivo) es obligatorio.",
+          message: messages.serialPortRequired,
         };
       }
       if (
@@ -58,14 +62,14 @@ export async function saveDeviceProviderAction(
       ) {
         return {
           success: false,
-          message: "Los baudios deben ser un número entre 300 y 921600.",
+          message: messages.baudrateRange,
         };
       }
     } else if (protocol === "SSH" || protocol === "TELNET") {
       if (!host) {
         return {
           success: false,
-          message: "El host o dirección IP es obligatorio.",
+          message: messages.hostRequired,
         };
       }
       if (
@@ -74,14 +78,14 @@ export async function saveDeviceProviderAction(
       ) {
         return {
           success: false,
-          message: "El puerto debe ser un número entre 1 y 65535.",
+          message: messages.portRange,
         };
       }
     } else if (protocol === "SIMULATION") {
       if (!host) {
         return {
           success: false,
-          message: "El host o URL de simulación es obligatorio.",
+          message: messages.simulationHostRequired,
         };
       }
     }
@@ -109,25 +113,26 @@ export async function saveDeviceProviderAction(
     revalidatePath("/dashboard/connection");
     return {
       success: true,
-      message: result.message || "Dispositivo guardado correctamente.",
+      message: result.message || messages.saved,
       data: result.data,
     };
   } catch (error) {
     console.error("Error en saveDeviceProviderAction:", error);
     return {
       success: false,
-      message: "Error al procesar el dispositivo.",
+      message: messages.saveError,
     };
   }
 }
 
 export async function getAllDeviceProvidersAction(): Promise<FormDeviceState> {
+  const t = await getServerDictionary();
   const result = await getDevices();
 
   if (!result.success) {
     return {
       success: false,
-      message: result.message || "No autorizado.",
+      message: result.message || t.forms.notAuthorized,
       data: [],
     };
   }
@@ -138,6 +143,7 @@ export async function getAllDeviceProvidersAction(): Promise<FormDeviceState> {
 export async function deleteDeviceProviderAction(
   id: string,
 ): Promise<FormDeviceState> {
+  const t = await getServerDictionary();
   const result = await deleteDevice(id);
 
   if (!result.success) {
@@ -145,13 +151,15 @@ export async function deleteDeviceProviderAction(
   }
 
   revalidatePath("/dashboard/connection");
-  return { success: true, message: result.message || "Dispositivo eliminado." };
+  return { success: true, message: result.message || t.forms.devices.deleted };
 }
 
 export async function keepDeviceProviderAction(
   id: string,
   name?: string,
 ): Promise<FormDeviceState> {
+  const t = await getServerDictionary();
+
   try {
     const result = await saveDevice({
       id,
@@ -166,14 +174,14 @@ export async function keepDeviceProviderAction(
     revalidatePath("/dashboard/connection");
     return {
       success: true,
-      message: result.message || "Dispositivo guardado como permanente.",
+      message: result.message || t.forms.devices.kept,
       data: result.data,
     };
   } catch (error) {
     console.error("Error en keepDeviceProviderAction:", error);
     return {
       success: false,
-      message: "Error al guardar el dispositivo.",
+      message: t.forms.devices.keepError,
     };
   }
 }
@@ -181,6 +189,8 @@ export async function keepDeviceProviderAction(
 export async function testDeviceConnectionAction(
   payload: DeviceTestInput,
 ): Promise<{ success: boolean; message: string }> {
+  const t = await getServerDictionary();
+
   try {
     const result = await testDeviceConnection(payload);
 
@@ -189,7 +199,7 @@ export async function testDeviceConnectionAction(
     console.error("Error en testDeviceConnectionAction:", error);
     return {
       success: false,
-      message: "No se pudo probar la conexión con el backend.",
+      message: t.forms.devices.backendConnectionError,
     };
   }
 }

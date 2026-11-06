@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, Check, LoaderCircle } from "lucide-react";
 import type { SkillLoadingEvent } from "@/hooks/useCiscoChat";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 
 export function SkillBadge({
   skill,
@@ -14,6 +15,7 @@ export function SkillBadge({
 }) {
 
   const [recienCargada, setRecienCargada] = useState<string | null>(null);
+  const t = useT();
 
   useEffect(() => {
     if (!skill) return;
@@ -38,7 +40,7 @@ export function SkillBadge({
         </span>
         <div className="flex min-h-[22px] min-w-0 items-center gap-2">
           <BookOpen className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="text-[12.5px] font-medium text-foreground">Skill en uso</span>
+          <span className="text-[12.5px] font-medium text-foreground">{t.chat.skill.inUse}</span>
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
             {skill.skillName}
           </span>
@@ -57,7 +59,7 @@ export function SkillBadge({
           </i>
         </span>
         <div className="flex min-h-[22px] min-w-0 items-center gap-2">
-          <span className="text-[12.5px] font-medium text-foreground">Skill cargada</span>
+          <span className="text-[12.5px] font-medium text-foreground">{t.chat.skill.loaded}</span>
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
             {recienCargada}
           </span>

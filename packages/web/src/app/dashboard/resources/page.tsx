@@ -1,21 +1,26 @@
+import type { Metadata } from "next";
 import UserManual from "@/component/resources/UserManual";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Manual de Usuario  ",
-  description:
-    "Centro de documentación con cheat sheets, plantillas y referencias",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.resources.title}`,
+    description: t.dashboard.metadata.resources.description,
+  };
+}
 
-export default function PageResources() {
+export default async function PageResources() {
+  const t = await getServerDictionary();
+
   return (
     <div className="space-y-6 text-foreground p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Manual del usuario
+          {t.dashboard.resources.title}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Guía paso a paso para configurar y operar todas las pestañas de Packet
-          Tools.
+          {t.dashboard.resources.description}
         </p>
       </div>
 

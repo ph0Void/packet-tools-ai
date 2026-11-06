@@ -3,8 +3,11 @@
 import React, { startTransition, useActionState, useEffect } from "react";
 import { ShieldAlert, X, RefreshCw, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import { FormAlertState, createAlertAction, updateAlertAction } from "@/action/AlertAction";
 import type { AlertRow } from "./types";
+import { useT } from "@/hooks/useT";
 
 interface ModalAlertProps {
     isOpen: boolean;
@@ -22,6 +25,7 @@ const initialState: FormAlertState = {
 };
 
 export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topologies }: ModalAlertProps) {
+    const t = useT();
     const [createState, createFormAction, isCreatePending] = useActionState(createAlertAction, initialState);
     const [updateState, updateFormAction, isUpdatePending] = useActionState(updateAlertAction, initialState);
 
@@ -38,9 +42,10 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
 
         if (currentState.success) {
             toast.success(currentState.message);
+            playSound(mode === "create" ? "create" : "update");
             onClose();
         } else {
-            toast.error(currentState.message);
+            notifyError(currentState.message);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentState]);
@@ -67,21 +72,21 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
-                    aria-label="Cerrar modal"
+                    aria-label={t.alerts.modal.closeAria}
                 >
                     <X className="w-5 h-5" />
                 </button>
 
                 <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
                     <ShieldAlert className="text-rose-500 w-5 h-5" />
-                    {mode === "create" ? "Reportar Incidencia de Red" : "Auditar Gravedad de Alerta"}
+                    {mode === "create" ? t.alerts.modal.createTitle : t.alerts.modal.editTitle}
                 </h3>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {mode === "edit" && alertToEdit && (
                         <div className="text-xs space-y-1 p-3 bg-muted border border-border rounded-xl text-muted-foreground">
-                            <p><strong>Incidencia:</strong> {alertToEdit.title}</p>
-                            <p><strong>Descripción original:</strong> {alertToEdit.description}</p>
+                            <p><strong>{t.alerts.modal.incident}</strong> {alertToEdit.title}</p>
+                            <p><strong>{t.alerts.modal.originalDescription}</strong> {alertToEdit.description}</p>
                             <input type="hidden" name="title" value={alertToEdit.title} />
                             <input type="hidden" name="description" value={alertToEdit.description} />
                         </div>
@@ -91,13 +96,13 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
                         <>
                             <div>
                                 <label htmlFor="alert-title" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                                    Título de la Alerta
+                                    {t.alerts.modal.titleLabel}
                                 </label>
                                 <input
                                     id="alert-title"
                                     type="text"
                                     name="title"
-                                    placeholder="Ej: Falla de enlace Switch0 a PC1"
+                                    placeholder={t.alerts.modal.titlePlaceholder}
                                     className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500"
                                     required
                                 />
@@ -105,13 +110,13 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
 
                             <div>
                                 <label htmlFor="alert-description" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                                    Descripción del Fallo
+                                    {t.alerts.modal.descriptionLabel}
                                 </label>
                                 <textarea
                                     id="alert-description"
                                     name="description"
                                     rows={3}
-                                    placeholder="Detalla la anomalía o comportamiento del software/hardware..."
+                                    placeholder={t.alerts.modal.descriptionPlaceholder}
                                     className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500"
                                     required
                                 />
@@ -122,7 +127,7 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="alert-severity" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                                Nivel de Gravedad
+                                {t.alerts.modal.severityLabel}
                             </label>
                             <select
                                 id="alert-severity"
@@ -147,7 +152,7 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
 
                         <div>
                             <label htmlFor="alert-topology" className="block text-xs font-semibold text-muted-foreground uppercase mb-1.5">
-                                Lienzo de Topología
+                                {t.alerts.modal.topologyLabel}
                             </label>
                             {mode === "edit" && alertToEdit ? (
                                 <>
@@ -155,8 +160,8 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
                                     <input
                                         type="text"
                                         disabled
-                                        value={alertToEdit.topology?.name || "Asignada"}
-                                        aria-label="Topología asignada"
+                                        value={alertToEdit.topology?.name || t.alerts.modal.assigned}
+                                        aria-label={t.alerts.modal.assignedAria}
                                         className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl text-xs text-muted-foreground opacity-70"
                                     />
                                 </>
@@ -168,7 +173,7 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
                                     className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
                                 >
                                     {topologies.length === 0 && (
-                                        <option value="">Sin topologías disponibles</option>
+                                        <option value="">{t.alerts.modal.noTopologies}</option>
                                     )}
                                     {topologies.map((t) => (
                                         <option key={t.id} value={t.id}>
@@ -187,7 +192,7 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
                             disabled={isPending}
                             className="px-4 py-2 text-xs font-semibold rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
                         >
-                            Cancelar
+                            {t.alerts.modal.cancel}
                         </button>
                         <button
                             type="submit"
@@ -197,17 +202,17 @@ export default function ModalAlert({ isOpen, onClose, mode, alertToEdit, topolog
                             {isPending ? (
                                 <>
                                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                    Procesando...
+                                    {t.alerts.modal.processing}
                                 </>
                             ) : mode === "create" ? (
                                 <>
                                     <Plus className="w-3.5 h-3.5" />
-                                    Reportar Alerta
+                                    {t.alerts.modal.submitCreate}
                                 </>
                             ) : (
                                 <>
                                     <Save className="w-3.5 h-3.5" />
-                                    Guardar Cambios
+                                    {t.alerts.modal.submitEdit}
                                 </>
                             )}
                         </button>

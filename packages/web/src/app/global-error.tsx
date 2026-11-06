@@ -1,6 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import {
+  DEFAULT_LOCALE,
+  LOCALE_COOKIE,
+  getDictionary,
+  type Locale,
+} from "@/i18n";
+
+const subscribeToCookies = () => () => {};
+
+function readLocaleCookie(): Locale {
+  const value = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${LOCALE_COOKIE}=`))
+    ?.slice(LOCALE_COOKIE.length + 1);
+  return value === "en" ? "en" : DEFAULT_LOCALE;
+}
 
 export default function GlobalError({
   error,
@@ -9,12 +26,19 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const locale = useSyncExternalStore(
+    subscribeToCookies,
+    readLocaleCookie,
+    () => DEFAULT_LOCALE,
+  );
+  const t = getDictionary(locale);
+
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   return (
-    <html lang="es" className="dark">
+    <html lang={locale} className="dark">
       <body
         style={{
           minHeight: "100vh",
@@ -28,11 +52,9 @@ export default function GlobalError({
       >
         <div style={{ textAlign: "center", display: "grid", gap: "1rem" }}>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>
-            Algo salió mal
+            {t.errors.title}
           </h1>
-          <p style={{ color: "#94a3b8" }}>
-            Ocurrió un error inesperado en la aplicación.
-          </p>
+          <p style={{ color: "#94a3b8" }}>{t.errors.description}</p>
           <button
             onClick={reset}
             style={{
@@ -45,7 +67,7 @@ export default function GlobalError({
               cursor: "pointer",
             }}
           >
-            Intentar de nuevo
+            {t.errors.retryLabel}
           </button>
         </div>
       </body>

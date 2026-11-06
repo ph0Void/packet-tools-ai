@@ -1,52 +1,68 @@
+import { useT } from "@/hooks/useT";
 import { CodeBlock, InlineCode, Paragraph, SimpleTable, SubTitle } from "./primitives";
 
-const CISCO = [
-  { command: "show ip interface brief", description: "Ver interfaces, su IP y si están activas." },
-  { command: "show running-config", description: "Ver la configuración actual del equipo." },
-  { command: "show ip route", description: "Ver por dónde sale el tráfico (rutas)." },
-  { command: "show vlan brief", description: "Ver las redes internas (VLAN) creadas." },
-  { command: "copy running-config startup-config", description: "Guardar lo configurado para que no se borre." },
-  { command: "ping 8.8.8.8", description: "Probar si hay conexión a internet." },
-];
+export default function Anexos() {
+  const t = useT();
+  const section = t.manual.anexos;
 
-const MIKROTIK = [
-  { command: "/ip address print", description: "Ver las direcciones IP del equipo." },
-  { command: "/ip route print", description: "Ver las rutas de salida." },
-  { command: "/interface print", description: "Ver las interfaces y su estado." },
-  { command: "/system identity set name=Router-1", description: "Ponerle nombre al equipo." },
-  { command: "/user set admin password=NuevaClave", description: "Cambiar la contraseña." },
-  { command: "ping 8.8.8.8", description: "Probar si hay conexión." },
-];
+  const cisco = [
+    { command: "show ip interface brief", description: section.cisco.interfaces },
+    { command: "show running-config", description: section.cisco.running },
+    { command: "show ip route", description: section.cisco.routes },
+    { command: "show vlan brief", description: section.cisco.vlans },
+    {
+      command: "copy running-config startup-config",
+      description: section.cisco.save,
+    },
+    { command: "ping 8.8.8.8", description: section.cisco.ping },
+  ];
 
-const HUAWEI = [
-  { command: "display ip interface brief", description: "Ver interfaces, su IP y si están activas." },
-  { command: "display current-configuration", description: "Ver la configuración actual." },
-  { command: "display ip routing-table", description: "Ver la tabla de rutas." },
-  { command: "display vlan", description: "Ver las redes internas (VLAN)." },
-  { command: "save", description: "Guardar la configuración." },
-  { command: "ping 8.8.8.8", description: "Probar si hay conexión." },
-];
+  const mikrotik = [
+    { command: "/ip address print", description: section.mikrotik.addresses },
+    { command: "/ip route print", description: section.mikrotik.routes },
+    { command: "/interface print", description: section.mikrotik.interfaces },
+    {
+      command: "/system identity set name=Router-1",
+      description: section.mikrotik.identity,
+    },
+    {
+      command: "/user set admin password=NuevaClave",
+      description: section.mikrotik.password,
+    },
+    { command: "ping 8.8.8.8", description: section.mikrotik.ping },
+  ];
 
-const ARUBA = [
-  { command: "show interfaces brief", description: "Ver interfaces y su estado." },
-  { command: "show running-config", description: "Ver la configuración actual." },
-  { command: "show ip route", description: "Ver las rutas de salida." },
-  { command: "show vlan", description: "Ver las redes internas (VLAN)." },
-  { command: "write memory", description: "Guardar la configuración." },
-  { command: "ping 8.8.8.8", description: "Probar si hay conexión." },
-];
+  const huawei = [
+    {
+      command: "display ip interface brief",
+      description: section.huawei.interfaces,
+    },
+    {
+      command: "display current-configuration",
+      description: section.huawei.current,
+    },
+    { command: "display ip routing-table", description: section.huawei.routes },
+    { command: "display vlan", description: section.huawei.vlans },
+    { command: "save", description: section.huawei.save },
+    { command: "ping 8.8.8.8", description: section.huawei.ping },
+  ];
 
-function VendorBlock({
-  rows,
-  copyLabel,
-}: {
-  rows: { command: string; description: string }[];
-  copyLabel: string;
-}) {
-  return (
+  const aruba = [
+    { command: "show interfaces brief", description: section.aruba.interfaces },
+    { command: "show running-config", description: section.aruba.current },
+    { command: "show ip route", description: section.aruba.routes },
+    { command: "show vlan", description: section.aruba.vlans },
+    { command: "write memory", description: section.aruba.save },
+    { command: "ping 8.8.8.8", description: section.aruba.ping },
+  ];
+
+  const renderBlock = (
+    rows: { command: string; description: string }[],
+    copyLabel: string
+  ) => (
     <div className="space-y-3">
       <SimpleTable
-        headers={["Comando", "Para qué sirve"]}
+        headers={[section.tableHeaders.command, section.tableHeaders.purpose]}
         rows={rows.map((item) => [
           <InlineCode key={item.command}>{item.command}</InlineCode>,
           item.description,
@@ -58,28 +74,26 @@ function VendorBlock({
       />
     </div>
   );
-}
 
-export default function Anexos() {
   return (
     <div className="space-y-5">
       <Paragraph>
-        <strong>Anexos</strong>: los comandos más usados por marca, explicados
-        con palabras sencillas. Cada lista trae su botón de copiar para
-        pegarlos en la Terminal o pedirle al Chat que los ejecute.
+        <strong>{t.manual.sections.anexos.title}</strong>
+        {": "}
+        {section.intro}
       </Paragraph>
 
       <SubTitle>Cisco (IOS)</SubTitle>
-      <VendorBlock rows={CISCO} copyLabel="Copiar comandos de Cisco" />
+      {renderBlock(cisco, section.copy.cisco)}
 
       <SubTitle>MikroTik (RouterOS)</SubTitle>
-      <VendorBlock rows={MIKROTIK} copyLabel="Copiar comandos de MikroTik" />
+      {renderBlock(mikrotik, section.copy.mikrotik)}
 
       <SubTitle>Huawei (VRP)</SubTitle>
-      <VendorBlock rows={HUAWEI} copyLabel="Copiar comandos de Huawei" />
+      {renderBlock(huawei, section.copy.huawei)}
 
       <SubTitle>Aruba (ArubaOS / CX)</SubTitle>
-      <VendorBlock rows={ARUBA} copyLabel="Copiar comandos de Aruba" />
+      {renderBlock(aruba, section.copy.aruba)}
     </div>
   );
 }

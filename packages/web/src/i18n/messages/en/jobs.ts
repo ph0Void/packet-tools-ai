@@ -1,0 +1,140 @@
+const jobs = {
+  header: {
+    title: "Tasks and Automations",
+    description:
+      "Manage scheduled tasks and manual or AI-driven runs.",
+    scheduledOne: "{count} scheduled automation",
+    scheduledMany: "{count} scheduled automations",
+    running: "{count} running",
+    newJob: "New Task",
+  },
+  table: {
+    name: "Task Name",
+    type: "Type",
+    target: "Target",
+    schedule: "Schedule",
+    nextRun: "Next Run",
+    lastRun: "Last Run",
+    status: "Status",
+    active: "Active",
+    actions: "Actions",
+    empty: "There are no scheduled tasks or automations.",
+    noTopology: "No topology",
+    once: "One-time",
+    recurring: "Recurring",
+    running: "RUNNING",
+  },
+  row: {
+    runNow: "Run Now",
+    running: "Running…",
+    edit: "Edit",
+    delete: "Delete",
+    activateAria: "Enable {name}",
+  },
+  actionTypes: {
+    intelligent: {
+      label: "Intelligent (AI Prompt)",
+      hint: "The AI agent operates the network following your prompt.",
+    },
+    standard: {
+      label: "Standard (Script / CLI)",
+      hint: "Sends a list of commands to a device.",
+    },
+  },
+  dialog: {
+    createTitle: "Schedule New Task",
+    editTitle: "Edit Scheduled Task",
+    subtitle: "Define what runs, when, and on which device.",
+    general: "General information",
+    nameLabel: "Task Name *",
+    namePlaceholder: "e.g. Nightly backup of the core switch",
+    descriptionLabel: "Short Description",
+    descriptionPlaceholder: "e.g. Runs a configuration backup at 2 AM",
+    actionType: "Action type",
+    actionTypeHint: "Defines how the task runs.",
+    actionTypeAria: "Action type",
+    schedule: "Schedule",
+    scheduleHint: "The task runs once on the chosen date and time.",
+    dateLabel: "Run date *",
+    selectDate: "Select a date",
+    timeLabel: "Run time *",
+    statusLabel: "Status",
+    activeTask: "Active task",
+    activeAria: "Active task",
+    willRunOnce: "It will run once on {date}",
+    expiredKept:
+      "The schedule has already expired; it will be kept as is. Choose a new date and time to reschedule it.",
+    mustBeFuture: "The date must be in the future.",
+    legacyCron:
+      "Current schedule: recurring (cron: {cron}). Choose a date and time to turn it into a one-time run.",
+    target: "Target",
+    targetHint:
+      "The device is required: it is the equipment that receives the commands.",
+    device: "Device",
+    deviceRequired: "Device *",
+    devicePlaceholderRequired: "Pick the device",
+    devicePlaceholderOptional: "Optional",
+    noDevice: "No device",
+    commands: "Commands to run *",
+    commandsHint: "One per line, in the order they will be sent.",
+    commandsAria: "Commands to run",
+    commandsHelp:
+      "They run on the selected device on {date}, not in the browser console.",
+    commandsHelpFallback: "the scheduled date and time",
+    commandsCount: "{count} / {max} commands",
+    commandsOver: "You have {count} commands and the maximum is {max}.",
+    prompt: "AI Agent Prompt",
+    promptHint: "State what the agent must do when the time comes.",
+    promptPlaceholder:
+      "e.g. Ping the main routers and generate a report...",
+    promptAria: "AI Agent Prompt",
+    promptHelp:
+      "Keeping the prompt short and clear is recommended for better results.",
+    cancel: "Cancel",
+    save: "Save Task",
+    deleteTitle: "Delete Scheduled Task",
+    deleteConfirmStart: "Are you sure you want to delete",
+    deleteConfirmEnd: "? This action cannot be undone.",
+  },
+  toasts: {
+    nameRequired: "The task name is required.",
+    selectDateTime: "Select the run date and time.",
+    invalidTime: "Enter a valid run time (HH:mm).",
+    futureDate: "The date must be in the future.",
+    expiredReactivate:
+      "This task has already expired. Choose a new date and time to reactivate it.",
+    commandsRequired:
+      "A standard automation needs at least one command: without them it would fail on every run.",
+    commandsMax:
+      "The maximum is {max} commands per run (you wrote {count}).",
+    deviceRequired:
+      "Select the device to command: it is what tells which equipment receives the commands (a topology is not enough).",
+    saveError: "Error saving the task.",
+    updated: "Task updated.",
+    created: "Scheduled task created.",
+    expiredOneTime:
+      "This one-time task has already expired. Edit it to choose a new date.",
+    statusError: "Error updating the status.",
+    activated: "Task enabled.",
+    deactivated: "Task disabled.",
+    statusUpdateError: "Error updating the task status.",
+    runError: "Could not run the task.",
+    runFailed: "Error running the task.",
+    deleteError: "Error deleting.",
+    deleted: "Task deleted.",
+    deleteUnexpected: "Error deleting the task.",
+    noResult: "The run returned no result.",
+    runDone: "«{name}» ran in {ms} ms.",
+    runFailedDetail: "Failed: {error}",
+    runFinishedError: "«{name}» finished with an error.",
+  },
+  standardNotSupported: {
+    gns3: "Standard automations do not run commands on GNS3 nodes: there is no way to open a console session against a GNS3 node from the backend. Use a smart automation (the agent can operate the topology) or a device with SSH, Telnet or a serial connection.",
+    simulation:
+      "SIMULATION protocol with device type '{tipo}' has no automatic command execution.",
+    protocol:
+      "Protocol '{protocolo}' is not supported by standard automations.",
+  },
+};
+
+export default jobs;

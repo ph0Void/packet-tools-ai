@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { es } from "react-day-picker/locale";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
@@ -41,7 +42,6 @@ import {
 import { runJobAction } from "@/action/CronJobAction";
 import {
   comandosATexto,
-  comandosQueCierranSesion,
   extraerComandos,
   MAX_COMANDOS_STANDARD,
   motivoDispositivoNoSoportado,
@@ -61,6 +61,9 @@ import {
   TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
+import { useT, useLocale } from "@/hooks/useT";
+import { interp } from "@/i18n/interp";
+import type { Dictionary } from "@/i18n";
 
 export type CronJobRow = CronJob & {
   lastRun?: string | null;
@@ -116,22 +119,16 @@ const EMPTY_FORM: JobFormState = {
 
 const ACTION_OPTIONS: {
   value: ActionType;
-  label: string;
-  hint: string;
   icon: LucideIcon;
   accent: string;
 }[] = [
     {
       value: "INTELLIGENT",
-      label: "Inteligente (Prompt IA)",
-      hint: "El agente de IA opera la red siguiendo tu prompt.",
       icon: Sparkles,
       accent: "text-violet-400",
     },
     {
       value: "STANDARD",
-      label: "Estándar (Script / CLI)",
-      hint: "Envía una lista de comandos a un dispositivo.",
       icon: Terminal,
       accent: "text-blue-400",
     },
@@ -197,14 +194,18 @@ function toJobPayload(
 
 function textoResultadoEjecucion(
   resultado: CronJobRunResult | undefined,
+  t: Dictionary,
 ): { ok: boolean; texto: string } {
   if (!resultado) {
-    return { ok: false, texto: "La ejecución no devolvió resultado." };
+    return { ok: false, texto: t.jobs.toasts.noResult };
   }
   if (resultado.ok) {
     return {
       ok: true,
-      texto: `«${resultado.nombre}» ejecutada en ${resultado.duracionMs} ms.`,
+      texto: interp(t.jobs.toasts.runDone, {
+        name: resultado.nombre,
+        ms: resultado.duracionMs,
+      }),
     };
   }
   if (!resultado.ejecutado && resultado.error) {
@@ -213,8 +214,10 @@ function textoResultadoEjecucion(
   return {
     ok: false,
     texto: resultado.error
-      ? `Falló: ${resultado.error}`
-      : `«${resultado.nombre}» terminó con error.`,
+      ? interp(t.jobs.toasts.runFailedDetail, { error: resultado.error })
+      : interp(t.jobs.toasts.runFinishedError, {
+          name: resultado.nombre,
+        }),
   };
 }
 
@@ -282,10 +285,12 @@ function InlineAlert({
 
 export default function CronJobManager({
   initialJobs,
-  topologies,
   devices,
   canManage,
 }: CronJobManagerProps) {
+  const t = useT();
+  const { locale } = useLocale();
+  const dateLocale = locale === "en" ? "en-US" : "es-ES";
   const router = useRouter();
   const [jobs, setJobs] = useState<CronJobRow[]>(initialJobs);
   const [prevInitialJobs, setPrevInitialJobs] =
@@ -340,9 +345,6 @@ export default function CronJobManager({
 
   const esStandard = form.actionType === "STANDARD";
   const comandosFormulario = esStandard ? extraerComandos(form.commands) : [];
-  const comandosDescartados = esStandard
-    ? comandosQueCierranSesion(form.commands)
-    : [];
   const dispositivoElegido = devices.find(
     (d) => d.id === form.deviceProviderId,
   );
@@ -398,22 +400,22 @@ export default function CronJobManager({
     const name = form.name.trim();
 
     if (!name) {
-      toast.error("El nombre de la tarea es obligatorio.");
+      notifyError(t.jobs.toasts.nameRequired);
       return;
     }
     if (!form.id && !scheduledAt) {
-      toast.error("Selecciona la fecha y hora de ejecución.");
+      notifyError(t.jobs.toasts.selectDateTime);
       return;
     }
     if (form.scheduledDate && !scheduledAt) {
-      toast.error("Indica una hora de ejecución válida (HH:mm).");
+      notifyError(t.jobs.toasts.invalidTime);
       return;
     }
     const isPastSchedule = Boolean(
       scheduledAt && scheduledAt.getTime() <= new Date().getTime(),
     );
     if (isPastSchedule && !scheduledAtUnchanged) {
-      toast.error("La fecha debe ser futura.");
+      notifyError(t.jobs.toasts.futureDate);
       return;
     }
     if (
@@ -422,29 +424,26 @@ export default function CronJobManager({
       form.isActive &&
       !editingJob?.isActive
     ) {
-      toast.error(
-        "Esta tarea ya venció. Selecciona una nueva fecha y hora para reactivarla.",
-      );
+      notifyError(t.jobs.toasts.expiredReactivate);
       return;
     }
 
     if (form.actionType === "STANDARD") {
       if (comandosFormulario.length === 0) {
-        toast.error(
-          "Una automatización estándar necesita al menos un comando: sin ellos fallaría en cada ejecución.",
-        );
+        notifyError(t.jobs.toasts.commandsRequired);
         return;
       }
       if (comandosFormulario.length > MAX_COMANDOS_STANDARD) {
-        toast.error(
-          `El máximo es de ${MAX_COMANDOS_STANDARD} comandos por ejecución (has escrito ${comandosFormulario.length}).`,
+        notifyError(
+          interp(t.jobs.toasts.commandsMax, {
+            max: MAX_COMANDOS_STANDARD,
+            count: comandosFormulario.length,
+          }),
         );
         return;
       }
       if (!form.deviceProviderId) {
-        toast.error(
-          "Selecciona el dispositivo que hay que comandar: es lo que dice a qué equipo se envían los comandos (una topología no basta).",
-        );
+        notifyError(t.jobs.toasts.deviceRequired);
         return;
       }
     }
@@ -464,13 +463,14 @@ export default function CronJobManager({
       } = await res.json();
 
       if (!data.success || !data.data) {
-        toast.error(data.message || "Error al guardar la tarea.");
+        notifyError(data.message || t.jobs.toasts.saveError);
         return;
       }
 
       toast.success(
-        form.id ? "Tarea actualizada." : "Tarea programada creada.",
+        form.id ? t.jobs.toasts.updated : t.jobs.toasts.created,
       );
+      playSound(form.id ? "update" : "create");
       setIsDialogOpen(false);
 
       const saved = data.data as CronJobRow;
@@ -481,7 +481,7 @@ export default function CronJobManager({
       );
       router.refresh();
     } catch {
-      toast.error("Error al guardar la tarea.");
+      notifyError(t.jobs.toasts.saveError);
     } finally {
       setBusyId(null);
     }
@@ -493,9 +493,7 @@ export default function CronJobManager({
       job.scheduledAt &&
       new Date(job.scheduledAt).getTime() <= new Date().getTime();
     if (expiredOneTime) {
-      toast.error(
-        "Esta tarea de ejecución única ya venció. Edítala para elegir una nueva fecha.",
-      );
+      notifyError(t.jobs.toasts.expiredOneTime);
       return;
     }
     setJobs((prev) =>
@@ -525,16 +523,19 @@ export default function CronJobManager({
         setJobs((prev) =>
           prev.map((j) => (j.id === job.id ? { ...j, isActive: !active } : j)),
         );
-        toast.error(data.message || "Error actualizando el estado.");
+        notifyError(data.message || t.jobs.toasts.statusError);
         return;
       }
-      toast.success(`Tarea ${active ? "activada" : "desactivada"}.`);
+      toast.success(
+        active ? t.jobs.toasts.activated : t.jobs.toasts.deactivated,
+      );
+      playSound("update");
       router.refresh();
     } catch {
       setJobs((prev) =>
         prev.map((j) => (j.id === job.id ? { ...j, isActive: !active } : j)),
       );
-      toast.error("Error actualizando el estado de la tarea.");
+      notifyError(t.jobs.toasts.statusUpdateError);
     }
   };
 
@@ -545,16 +546,16 @@ export default function CronJobManager({
       const ejecucion = result.data;
       if (!result.success) {
 
-        toast.error(result.message || "No se pudo ejecutar la tarea.");
+        notifyError(result.message || t.jobs.toasts.runError);
         router.refresh();
         return;
       }
 
-      const pintado = textoResultadoEjecucion(ejecucion);
+      const pintado = textoResultadoEjecucion(ejecucion, t);
       if (pintado.ok) {
         toast.success(pintado.texto);
       } else {
-        toast.error(pintado.texto);
+        notifyError(pintado.texto);
       }
 
       setJobs((prev) =>
@@ -575,7 +576,7 @@ export default function CronJobManager({
       );
       router.refresh();
     } catch {
-      toast.error("Error al ejecutar la tarea.");
+      notifyError(t.jobs.toasts.runFailed);
     } finally {
       setBusyId(null);
     }
@@ -590,14 +591,14 @@ export default function CronJobManager({
       });
       const data: { success: boolean; message: string } = await res.json();
       if (!data.success) {
-        toast.error(data.message || "Error al eliminar.");
+        notifyError(data.message || t.jobs.toasts.deleteError);
         return;
       }
-      toast.success("Tarea eliminada.");
+      toast.success(t.jobs.toasts.deleted);
       setJobs((prev) => prev.filter((j) => j.id !== deleteTarget.id));
       router.refresh();
     } catch {
-      toast.error("Error al eliminar la tarea.");
+      notifyError(t.jobs.toasts.deleteUnexpected);
     } finally {
       setBusyId(null);
       setDeleteTarget(null);
@@ -613,27 +614,31 @@ export default function CronJobManager({
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Clock className="h-5 w-5 text-primary" />
-            Tareas y Automatizaciones
+            {t.jobs.header.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Gestiona tareas programadas y ejecuciones manuales o impulsadas por
-            IA.{" "}
+            {t.jobs.header.description}{" "}
           </p>
 
           {planificador && (
             <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5 shrink-0 text-primary" />
               <span>
-                {planificador.length}{" "}
                 {planificador.length === 1
-                  ? "automatización programada"
-                  : "automatizaciones programadas"}
+                  ? interp(t.jobs.header.scheduledOne, {
+                      count: planificador.length,
+                    })
+                  : interp(t.jobs.header.scheduledMany, {
+                      count: planificador.length,
+                    })}
               </span>
               {automatizadasEnCurso > 0 && (
                 <>
                   <span aria-hidden="true">·</span>
                   <span className="text-cyan-400">
-                    {automatizadasEnCurso} en ejecución
+                    {interp(t.jobs.header.running, {
+                      count: automatizadasEnCurso,
+                    })}
                   </span>
                 </>
               )}
@@ -647,7 +652,7 @@ export default function CronJobManager({
             className="cursor-pointer gap-2 self-start sm:self-auto shrink-0"
           >
             <Plus className="w-4 h-4" />
-            Nueva Tarea
+            {t.jobs.header.newJob}
           </Button>
         )}
       </div>
@@ -657,15 +662,15 @@ export default function CronJobManager({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
               <tr>
-                <th className="p-4">Nombre de la Tarea</th>
-                <th className="p-4">Tipo</th>
-                <th className="p-4">Destino</th>
-                <th className="p-4">Programación</th>
-                <th className="p-4">Próxima Ejecución</th>
-                <th className="p-4">Última Ejecución</th>
-                <th className="p-4">Estado</th>
-                <th className="p-4 text-center">Activo</th>
-                {canManage && <th className="p-4 text-right">Acciones</th>}
+                <th className="p-4">{t.jobs.table.name}</th>
+                <th className="p-4">{t.jobs.table.type}</th>
+                <th className="p-4">{t.jobs.table.target}</th>
+                <th className="p-4">{t.jobs.table.schedule}</th>
+                <th className="p-4">{t.jobs.table.nextRun}</th>
+                <th className="p-4">{t.jobs.table.lastRun}</th>
+                <th className="p-4">{t.jobs.table.status}</th>
+                <th className="p-4 text-center">{t.jobs.table.active}</th>
+                {canManage && <th className="p-4 text-right">{t.jobs.table.actions}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -675,7 +680,7 @@ export default function CronJobManager({
                     colSpan={canManage ? 9 : 8}
                     className="p-8 text-center text-muted-foreground"
                   >
-                    No hay tareas o automatizaciones programadas.
+                    {t.jobs.table.empty}
                   </td>
                 </tr>
               ) : (
@@ -720,13 +725,13 @@ export default function CronJobManager({
                       <td className="max-w-40 truncate p-4 text-xs text-muted-foreground">
                         {job.deviceProvider?.name ?? "—"}
                         <br />
-                        {job.topology?.name ?? "Sin topología"}
+                        {job.topology?.name ?? t.jobs.table.noTopology}
                       </td>
                       <td className="p-4">
                         <div className="flex flex-wrap items-center gap-1.5">
                           {job.scheduledAt ? (
                             <span className="text-xs whitespace-nowrap text-muted-foreground">
-                              {formatDate(job.scheduledAt)}
+                              {formatDate(job.scheduledAt, dateLocale)}
                             </span>
                           ) : (
                             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
@@ -741,15 +746,15 @@ export default function CronJobManager({
                                 : "border-border bg-muted text-muted-foreground",
                             )}
                           >
-                            {job.scheduledAt ? "Única" : "Recurrente"}
+                            {job.scheduledAt ? t.jobs.table.once : t.jobs.table.recurring}
                           </Badge>
                         </div>
                       </td>
                       <td className="p-4 text-xs whitespace-nowrap text-muted-foreground">
-                        {job.nextRun ? formatDate(job.nextRun) : "—"}
+                        {job.nextRun ? formatDate(job.nextRun, dateLocale) : "—"}
                       </td>
                       <td className="p-4 text-xs whitespace-nowrap text-muted-foreground">
-                        {job.lastRun ? formatDate(job.lastRun) : "—"}
+                        {job.lastRun ? formatDate(job.lastRun, dateLocale) : "—"}
                       </td>
                       <td className="p-4">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -763,7 +768,7 @@ export default function CronJobManager({
                               className="gap-1 border-cyan-500/30 bg-cyan-500/15 text-cyan-400"
                             >
                               <Spinner className="h-3 w-3" />
-                              EN CURSO
+                              {t.jobs.table.running}
                             </Badge>
                           )}
                         </div>
@@ -776,7 +781,9 @@ export default function CronJobManager({
                           onCheckedChange={(checked) =>
                             handleToggleActive(job, checked)
                           }
-                          aria-label={`Activar ${job.name}`}
+                          aria-label={interp(t.jobs.row.activateAria, {
+                            name: job.name,
+                          })}
                         />
                       </td>
                       {canManage && (
@@ -788,8 +795,8 @@ export default function CronJobManager({
                               className="cursor-pointer"
                               title={
                                 busyId === job.id
-                                  ? "Ejecutando…"
-                                  : "Ejecutar Ahora"
+                                  ? t.jobs.row.running
+                                  : t.jobs.row.runNow
                               }
                               aria-busy={busyId === job.id}
                               disabled={busyId === job.id}
@@ -805,7 +812,7 @@ export default function CronJobManager({
                               size="icon"
                               variant="ghost"
                               className="cursor-pointer"
-                              title="Editar"
+                              title={t.jobs.row.edit}
                               disabled={busyId === job.id}
                               onClick={() => openEditDialog(job)}
                             >
@@ -815,7 +822,7 @@ export default function CronJobManager({
                               size="icon"
                               variant="ghost"
                               className="cursor-pointer text-destructive hover:bg-destructive/10"
-                              title="Eliminar"
+                              title={t.jobs.row.delete}
                               disabled={busyId === job.id}
                               onClick={() => setDeleteTarget(job)}
                             >
@@ -838,10 +845,10 @@ export default function CronJobManager({
           <DialogHeader className="border-b border-border px-6 py-4 pr-12">
             <DialogTitle className="flex items-center gap-2">
               <CalendarClock className="h-5 w-5 text-primary" />
-              {form.id ? "Editar Tarea Programada" : "Programar Nueva Tarea"}
+              {form.id ? t.jobs.dialog.editTitle : t.jobs.dialog.createTitle}
             </DialogTitle>
             <p className="text-xs text-muted-foreground">
-              Define qué se ejecuta, cuándo y sobre qué equipo.
+              {t.jobs.dialog.subtitle}
             </p>
           </DialogHeader>
 
@@ -851,13 +858,13 @@ export default function CronJobManager({
           >
             <div className="flex-1 space-y-6 overflow-x-hidden overflow-y-auto px-6 py-5">
 
-              <FormSection icon={FileText} title="Información general">
+              <FormSection icon={FileText} title={t.jobs.dialog.general}>
                 <div className="grid gap-4 ">
                   <div className="min-w-0 space-y-2">
-                    <Label htmlFor="job-name">Nombre de la Tarea *</Label>
+                    <Label htmlFor="job-name">{t.jobs.dialog.nameLabel}</Label>
                     <Input
                       id="job-name"
-                      placeholder="Ej: Backup nocturno del switch core"
+                      placeholder={t.jobs.dialog.namePlaceholder}
                       value={form.name}
                       onChange={(e) => updateForm({ name: e.target.value })}
                       required
@@ -865,11 +872,13 @@ export default function CronJobManager({
                   </div>
 
                   <div className="min-w-0 space-y-2">
-                    <Label htmlFor="job-description">Descripción Breve</Label>
+                    <Label htmlFor="job-description">
+                      {t.jobs.dialog.descriptionLabel}
+                    </Label>
                     <Textarea
                       id="job-description"
                       className="resize-none min-h-[60px]"
-                      placeholder="Ej: Ejecuta respaldo de configuración a las 2 AM"
+                      placeholder={t.jobs.dialog.descriptionPlaceholder}
                       value={form.description}
                       onChange={(e) =>
                         updateForm({ description: e.target.value })
@@ -881,17 +890,21 @@ export default function CronJobManager({
 
               <FormSection
                 icon={Sparkles}
-                title="Tipo de acción"
-                description="Define cómo se ejecuta la tarea."
+                title={t.jobs.dialog.actionType}
+                description={t.jobs.dialog.actionTypeHint}
               >
                 <div
                   role="radiogroup"
-                  aria-label="Tipo de acción"
+                  aria-label={t.jobs.dialog.actionTypeAria}
                   className="grid gap-3 md:grid-cols-2"
                 >
                   {ACTION_OPTIONS.map((option) => {
                     const selected = form.actionType === option.value;
                     const Icon = option.icon;
+                    const optionText =
+                      option.value === "INTELLIGENT"
+                        ? t.jobs.actionTypes.intelligent
+                        : t.jobs.actionTypes.standard;
                     return (
                       <button
                         key={option.value}
@@ -911,10 +924,10 @@ export default function CronJobManager({
                         />
                         <span className="min-w-0">
                           <span className="block text-sm font-medium text-foreground">
-                            {option.label}
+                            {optionText.label}
                           </span>
                           <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {option.hint}
+                            {optionText.hint}
                           </span>
                         </span>
                       </button>
@@ -925,12 +938,12 @@ export default function CronJobManager({
 
               <FormSection
                 icon={CalendarClock}
-                title="Programación"
-                description="La tarea se ejecuta una sola vez en la fecha y hora elegidas."
+                title={t.jobs.dialog.schedule}
+                description={t.jobs.dialog.scheduleHint}
               >
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="min-w-0 space-y-2">
-                    <Label id="job-date-label">Fecha de ejecución *</Label>
+                    <Label id="job-date-label">{t.jobs.dialog.dateLabel}</Label>
                     <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -942,17 +955,16 @@ export default function CronJobManager({
                           <CalendarIcon className="h-4 w-4 shrink-0" />
                           <span className="truncate">
                             {form.scheduledDate
-                              ? formatDate(form.scheduledDate, "es-PE", {
+                              ? formatDate(form.scheduledDate, dateLocale, {
                                 dateStyle: "long",
                               })
-                              : "Seleccionar fecha"}
+                              : t.jobs.dialog.selectDate}
                           </span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <CalendarUI
                           mode="single"
-                          locale={es}
                           selected={form.scheduledDate}
                           onSelect={(date) => {
                             updateForm({ scheduledDate: date });
@@ -966,7 +978,7 @@ export default function CronJobManager({
                   </div>
 
                   <div className="min-w-0 space-y-2">
-                    <Label htmlFor="job-time">Hora de ejecución *</Label>
+                    <Label htmlFor="job-time">{t.jobs.dialog.timeLabel}</Label>
                     <Input
                       id="job-time"
                       type="time"
@@ -980,14 +992,14 @@ export default function CronJobManager({
 
                   <div className="min-w-0 space-y-2">
                     <Label htmlFor="job-active" className="cursor-pointer">
-                      Estado
+                      {t.jobs.dialog.statusLabel}
                     </Label>
                     <div className="flex h-9 items-center justify-between gap-3 rounded-md border border-border px-3">
                       <Label
                         htmlFor="job-active"
                         className="cursor-pointer text-sm font-normal"
                       >
-                        Tarea activa
+                        {t.jobs.dialog.activeTask}
                       </Label>
                       <Switch
 
@@ -996,7 +1008,7 @@ export default function CronJobManager({
                         onCheckedChange={(checked) =>
                           updateForm({ isActive: checked })
                         }
-                        aria-label="Tarea activa"
+                        aria-label={t.jobs.dialog.activeAria}
                       />
                     </div>
                   </div>
@@ -1004,47 +1016,46 @@ export default function CronJobManager({
 
                 {scheduledAt && !isScheduledInPast && (
                   <InlineAlert tone="info" icon={CalendarIcon}>
-                    Se ejecutará una sola vez el{" "}
-                    {formatDate(scheduledAt, "es-PE", {
-                      dateStyle: "full",
-                      timeStyle: "short",
+                    {interp(t.jobs.dialog.willRunOnce, {
+                      date: formatDate(scheduledAt, dateLocale, {
+                        dateStyle: "full",
+                        timeStyle: "short",
+                      }),
                     })}
                   </InlineAlert>
                 )}
 
                 {isScheduledInPast && scheduledAtUnchanged && (
                   <InlineAlert tone="warning" icon={CalendarIcon}>
-                    La programación ya venció; se conservará tal cual. Elige
-                    una nueva fecha y hora para reprogramarla.
+                    {t.jobs.dialog.expiredKept}
                   </InlineAlert>
                 )}
 
                 {isScheduledInPast && !scheduledAtUnchanged && (
                   <InlineAlert tone="danger" icon={CalendarIcon}>
-                    La fecha debe ser futura.
+                    {t.jobs.dialog.mustBeFuture}
                   </InlineAlert>
                 )}
 
                 {legacyCron && !form.scheduledDate && (
                   <InlineAlert tone="info" icon={CalendarIcon}>
-                    Programación actual: recurrente (cron:{" "}
-                    <code className="rounded bg-muted px-1 font-mono">
-                      {legacyCron}
-                    </code>
-                    ). Selecciona fecha y hora para convertirla en ejecución
-                    única.
+                    {interp(t.jobs.dialog.legacyCron, { cron: legacyCron })}
                   </InlineAlert>
                 )}
               </FormSection>
 
               <FormSection
                 icon={Server}
-                title="Destino"
-                description="El dispositivo es obligatorio: es el equipo que recibe los comandos."
+                title={t.jobs.dialog.target}
+                description={t.jobs.dialog.targetHint}
               >
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="min-w-0 space-y-2">
-                    <Label>Dispositivo{esStandard ? " *" : ""}</Label>
+                    <Label>
+                      {esStandard
+                        ? t.jobs.dialog.deviceRequired
+                        : t.jobs.dialog.device}
+                    </Label>
                     <Select
                       value={form.deviceProviderId || NONE}
                       onValueChange={(val) =>
@@ -1056,13 +1067,15 @@ export default function CronJobManager({
                       <SelectTrigger className="w-full cursor-pointer">
                         <SelectValue
                           placeholder={
-                            esStandard ? "Elige el equipo" : "Opcional"
+                            esStandard
+                              ? t.jobs.dialog.devicePlaceholderRequired
+                              : t.jobs.dialog.devicePlaceholderOptional
                           }
                         />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE} className="cursor-pointer">
-                          Sin dispositivo
+                          {t.jobs.dialog.noDevice}
                         </SelectItem>
                         {devices.map((d) => (
                           <SelectItem
@@ -1087,8 +1100,8 @@ export default function CronJobManager({
               {esStandard ? (
                 <FormSection
                   icon={Terminal}
-                  title="Comandos a ejecutar *"
-                  description="Uno por línea, en el orden en que se enviarán."
+                  title={t.jobs.dialog.commands}
+                  description={t.jobs.dialog.commandsHint}
                 >
                   <div className="space-y-2">
                     <Textarea
@@ -1103,7 +1116,7 @@ export default function CronJobManager({
                       onChange={(e) =>
                         updateForm({ commands: e.target.value })
                       }
-                      aria-label="Comandos a ejecutar"
+                      aria-label={t.jobs.dialog.commandsAria}
                       aria-describedby="job-commands-help"
                     />
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -1111,14 +1124,14 @@ export default function CronJobManager({
                         id="job-commands-help"
                         className="min-w-0 flex-1 text-muted-foreground"
                       >
-                        Se ejecutan en el dispositivo elegido el{" "}
-                        {scheduledAt
-                          ? formatDate(scheduledAt, "es-PE", {
-                            dateStyle: "long",
-                            timeStyle: "short",
-                          })
-                          : "día y hora programados"}
-                        , no en la consola del navegador.
+                        {interp(t.jobs.dialog.commandsHelp, {
+                          date: scheduledAt
+                            ? formatDate(scheduledAt, dateLocale, {
+                              dateStyle: "long",
+                              timeStyle: "short",
+                            })
+                            : t.jobs.dialog.commandsHelpFallback,
+                        })}
                       </p>
                       <span
                         className={cn(
@@ -1128,15 +1141,19 @@ export default function CronJobManager({
                             : "text-muted-foreground",
                         )}
                       >
-                        {comandosFormulario.length} / {MAX_COMANDOS_STANDARD}{" "}
-                        comandos
+                        {interp(t.jobs.dialog.commandsCount, {
+                          count: comandosFormulario.length,
+                          max: MAX_COMANDOS_STANDARD,
+                        })}
                       </span>
                     </div>
 
                     {comandosFormulario.length > MAX_COMANDOS_STANDARD && (
                       <InlineAlert tone="danger">
-                        Llevas {comandosFormulario.length} comandos y el máximo
-                        es {MAX_COMANDOS_STANDARD}.
+                        {interp(t.jobs.dialog.commandsOver, {
+                          count: comandosFormulario.length,
+                          max: MAX_COMANDOS_STANDARD,
+                        })}
                       </InlineAlert>
                     )}
 
@@ -1147,24 +1164,24 @@ export default function CronJobManager({
                 <>
                   <FormSection
                     icon={Sparkles}
-                    title="Prompt del Agente de IA"
-                    description="Indica qué debe hacer el agente cuando llegue la hora."
+                    title={t.jobs.dialog.prompt}
+                    description={t.jobs.dialog.promptHint}
                   >
                     <Textarea
                       id="job-prompt"
                       rows={6}
                       className="resize-none min-h-[110px]"
-                      placeholder="Ej: Realiza un ping entre los routers principales y genera un reporte..."
+                      placeholder={t.jobs.dialog.promptPlaceholder}
                       value={form.prompt}
                       onChange={(e) => updateForm({ prompt: e.target.value })}
-                      aria-label="Prompt del Agente de IA"
+                      aria-label={t.jobs.dialog.promptAria}
                     />
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <p
                         id="job-commands-help"
                         className="min-w-0 flex-1 text-muted-foreground"
                       >
-                        Se recomienda que el prompt sea conciso y claro para obtener mejores resultados.
+                        {t.jobs.dialog.promptHelp}
                       </p>
                     </div>
                   </FormSection>
@@ -1179,7 +1196,7 @@ export default function CronJobManager({
                 className="cursor-pointer"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Cancelar
+                {t.jobs.dialog.cancel}
               </Button>
               <Button
                 type="submit"
@@ -1187,7 +1204,7 @@ export default function CronJobManager({
                 disabled={isSaving}
               >
                 {isSaving && <Spinner className="h-4 w-4" />}
-                Guardar Tarea
+                {t.jobs.dialog.save}
               </Button>
             </DialogFooter>
           </form>
@@ -1200,14 +1217,14 @@ export default function CronJobManager({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Eliminar Tarea Programada</DialogTitle>
+            <DialogTitle>{t.jobs.dialog.deleteTitle}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            ¿Seguro que deseas eliminar{" "}
+            {t.jobs.dialog.deleteConfirmStart}{" "}
             <span className="font-semibold text-foreground">
               {deleteTarget?.name}
             </span>
-            ? Esta acción no se puede deshacer.
+            {t.jobs.dialog.deleteConfirmEnd}
           </p>
           <DialogFooter>
             <Button
@@ -1215,7 +1232,7 @@ export default function CronJobManager({
               className="cursor-pointer"
               onClick={() => setDeleteTarget(null)}
             >
-              Cancelar
+              {t.jobs.dialog.cancel}
             </Button>
             <Button
               variant="destructive"
@@ -1223,7 +1240,7 @@ export default function CronJobManager({
               disabled={!deleteTarget || busyId === deleteTarget.id}
               onClick={handleDelete}
             >
-              Eliminar
+              {t.jobs.row.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

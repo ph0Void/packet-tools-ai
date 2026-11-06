@@ -13,7 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { useT } from "@/hooks/useT";
 import type { TopologyRow } from "./types";
 
 interface TopologyEditDialogProps {
@@ -30,6 +31,7 @@ export default function TopologyEditDialog({
   onOpenChange,
   onSubmit,
 }: TopologyEditDialogProps) {
+  const t = useT();
   const [isPending, setIsPending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -41,7 +43,7 @@ export default function TopologyEditDialog({
     const description = String(formData.get("description") ?? "").trim();
 
     if (!name) {
-      toast.error("El nombre de la topología es obligatorio.");
+      notifyError(t.topology.edit.nameRequired);
       return;
     }
 
@@ -61,32 +63,34 @@ export default function TopologyEditDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Editar Topología</DialogTitle>
+          <DialogTitle>{t.topology.edit.title}</DialogTitle>
           <DialogDescription>
-            Modifica el nombre y la descripción. El diagrama se conserva.
+            {t.topology.edit.description}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="topology-name">Nombre</Label>
+            <Label htmlFor="topology-name">{t.topology.edit.name}</Label>
             <Input
               id="topology-name"
               name="name"
               defaultValue={topology?.name ?? ""}
-              placeholder="Ej: Topología LAN Sede Central"
+              placeholder={t.topology.edit.namePlaceholder}
               required
               disabled={isPending}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="topology-description">Descripción</Label>
+            <Label htmlFor="topology-description">
+              {t.topology.edit.descriptionLabel}
+            </Label>
             <Input
               id="topology-description"
               name="description"
               defaultValue={topology?.description ?? ""}
-              placeholder="Descripción breve de la topología"
+              placeholder={t.topology.edit.descriptionPlaceholder}
               disabled={isPending}
             />
           </div>
@@ -98,11 +102,11 @@ export default function TopologyEditDialog({
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 data-icon="inline-start" />}
-              Guardar cambios
+              {t.topology.edit.saveChanges}
             </Button>
           </DialogFooter>
         </form>

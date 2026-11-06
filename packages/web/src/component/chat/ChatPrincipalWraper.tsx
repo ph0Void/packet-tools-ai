@@ -93,9 +93,10 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { interp } from "@/i18n/interp";
+import { useT, useLocale } from "@/hooks/useT";
 
 const HANDOFF_LABELS: Record<string, string> = {
-  general: "Agente General",
   packet_tracer: "Packet Tracer",
   gns3: "GNS3",
   ssh: "SSH",
@@ -110,120 +111,53 @@ interface Sugerencia {
   prompt: string;
 }
 
-const SUGGESTIONS: Sugerencia[] = [
-  {
-
-    icon: ShieldCheck,
-    title: "Configurar OSPF por SSH",
-    desc: "Con tu aprobación antes de aplicar",
-    prompt:
-      "Configura OSPF en el router conectado por SSH (pídeme aprobación antes de aplicar)",
-  },
-  {
-
-    icon: Network,
-    title: "Topología en Packet Tracer",
-    desc: "2 routers y 3 switches en estrella",
-    prompt:
-      "Diseña en Packet Tracer una topología con 2 routers y 3 switches en estrella",
-  },
-  {
-
-    icon: Search,
-    title: "Auditar la topología",
-    desc: "Interfaces caídas, vecinos OSPF y rutas",
-    prompt:
-      "Audita la topología actual: interfaces caídas, vecinos OSPF y rutas faltantes",
-  },
-  {
-
-    icon: FileText,
-    title: "Consultar documentación",
-    desc: "Búsqueda RAG sobre tu equipo",
-    prompt:
-      "Emplea @rag para buscar la documentación interna sobre mi dispositivo conectado por SSH y resume los pasos de configuración",
-  },
-];
-
-const MORE_IDEAS: { label: string; prompt: string }[] = [
-  {
-    label: "Laboratorio en GNS3",
-    prompt:
-      "Levanta en GNS3 un laboratorio con dos routers Cisco conectados por serial",
-  },
-  {
-    label: "Última versión de IOS",
-    prompt:
-      "Busca en internet con @web la última versión estable de IOS para un Catalyst 2960",
-  },
-  {
-    label: "Tarea diaria de revisión",
-    prompt:
-      "Programa una tarea diaria a las 8:00 que revise las interfaces caídas",
-  },
-  {
-    label: "Alertas críticas",
-    prompt:
-      "Muéstrame las alertas CRITICAL y HIGH de las últimas 24 horas",
-  },
-];
-
 const PROTOCOL_GROUPS = ["SSH", "TELNET", "SERIAL"] as const;
 
 const AGENT_PROGRESS_META: Record<
   AgentProgressEvent["phase"],
-  { label: string; icon: LucideIcon; spinner: boolean; tone: string }
+  { icon: LucideIcon; spinner: boolean; tone: string }
 > = {
   reading: {
-    label: "Leyendo terminal…",
     icon: Loader2,
     spinner: true,
     tone: "border-primary/30 bg-primary/5 text-primary",
   },
   sending: {
-    label: "Enviando comando…",
     icon: Loader2,
     spinner: true,
     tone: "border-primary/30 bg-primary/5 text-primary",
   },
   configuring: {
-    label: "Configurando equipo…",
     icon: Loader2,
     spinner: true,
     tone: "border-primary/30 bg-primary/5 text-primary",
   },
   verifying: {
-    label: "Verificando en el equipo…",
     icon: Loader2,
     spinner: true,
     tone: "border-primary/30 bg-primary/5 text-primary",
   },
   waiting_prompt: {
-    label: "Esperando prompt…",
     icon: Loader2,
     spinner: true,
     tone: "border-primary/30 bg-primary/5 text-primary",
   },
   terminal_required: {
-    label: "Consola no conectada",
     icon: AlertTriangle,
     spinner: false,
     tone: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   connected: {
-    label: "Consola conectada",
     icon: PlugZap,
     spinner: false,
     tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   },
   disconnected: {
-    label: "Consola desconectada",
     icon: PlugZap,
     spinner: false,
     tone: "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400",
   },
   unknown: {
-    label: "Agente trabajando…",
     icon: Loader2,
     spinner: true,
     tone: "border-border/50 bg-muted/40 text-muted-foreground",
@@ -343,9 +277,9 @@ function textoVisibleDelStream(
   return deSegmentos || streamingText.trim();
 }
 
-function formatoHora(fecha: string | Date): string {
+function formatoHora(fecha: string | Date, locale: string): string {
   try {
-    return new Date(fecha).toLocaleTimeString("es-ES", {
+    return new Date(fecha).toLocaleTimeString(locale === "en" ? "en-US" : "es-ES", {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -361,16 +295,17 @@ function BotonCopiarRespuesta({
   copied: boolean;
   onCopy: () => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
       onClick={onCopy}
-      aria-label={copied ? "Respuesta copiada" : "Copiar respuesta"}
-      title={copied ? "Respuesta copiada" : "Copiar respuesta"}
+      aria-label={copied ? t.chat.main.copiedAria : t.chat.main.copyAria}
+      title={copied ? t.chat.main.copiedAria : t.chat.main.copyAria}
       className="inline-flex h-6 items-center gap-1.5 rounded-md border border-border bg-transparent px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground cursor-pointer"
     >
       {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-      <span>{copied ? "Copiado" : "Copiar"}</span>
+      <span>{copied ? t.chat.main.copied : t.chat.main.copy}</span>
     </button>
   );
 }
@@ -425,6 +360,7 @@ function AssistantSegments({
   elegirOpcionPlan: (opcionId: string, titulo: string) => Promise<void>;
   escribirRespuestaPropia: (opcionId: string, texto: string) => void;
 }) {
+  const t = useT();
 
   const segments = useMemo(() => {
     if (message.segments?.length) return null;
@@ -445,7 +381,7 @@ function AssistantSegments({
         >
           <ReasoningTrigger
             className="w-auto text-[12.5px] text-muted-foreground hover:text-foreground"
-            getThinkingMessage={() => <span>Razonamiento del modelo</span>}
+            getThinkingMessage={() => <span>{t.chat.main.reasoningTitle}</span>}
           />
           <ReasoningContent className="mt-2">
             {message.reasoning}
@@ -579,6 +515,52 @@ export default function ChatPrincipalWraper({
     ragSources,
     adminActions,
   } = useChatContext();
+
+  const t = useT();
+  const { locale } = useLocale();
+  const suggestions: Sugerencia[] = [
+    {
+      icon: ShieldCheck,
+      title: t.chat.main.suggestions.ospf.title,
+      desc: t.chat.main.suggestions.ospf.desc,
+      prompt: t.chat.main.suggestions.ospf.prompt,
+    },
+    {
+      icon: Network,
+      title: t.chat.main.suggestions.topology.title,
+      desc: t.chat.main.suggestions.topology.desc,
+      prompt: t.chat.main.suggestions.topology.prompt,
+    },
+    {
+      icon: Search,
+      title: t.chat.main.suggestions.audit.title,
+      desc: t.chat.main.suggestions.audit.desc,
+      prompt: t.chat.main.suggestions.audit.prompt,
+    },
+    {
+      icon: FileText,
+      title: t.chat.main.suggestions.docs.title,
+      desc: t.chat.main.suggestions.docs.desc,
+      prompt: t.chat.main.suggestions.docs.prompt,
+    },
+  ];
+  const moreIdeas = [
+    t.chat.main.ideas.gns3,
+    t.chat.main.ideas.ios,
+    t.chat.main.ideas.daily,
+    t.chat.main.ideas.alerts,
+  ];
+  const progressLabels: Record<AgentProgressEvent["phase"], string> = {
+    reading: t.chat.main.progress.reading,
+    sending: t.chat.main.progress.sending,
+    configuring: t.chat.main.progress.configuring,
+    verifying: t.chat.main.progress.verifying,
+    waiting_prompt: t.chat.main.progress.waitingPrompt,
+    terminal_required: t.chat.main.progress.terminalRequired,
+    connected: t.chat.main.progress.connected,
+    disconnected: t.chat.main.progress.disconnected,
+    unknown: t.chat.main.progress.unknown,
+  };
 
   /**
    * Opciones del plan ya respondidas, DERIVADO del array de mensajes y sin estado nuevo:
@@ -783,11 +765,12 @@ export default function ChatPrincipalWraper({
   const defaultName = models.find((m) => m.id === defaultModelId)?.name;
 
   const modeloEtiqueta = modeloVisible
-    ? (models.find((m) => m.id === modeloVisible)?.name ?? "Modelo")
-    : (defaultName ?? "Predeterminado");
+    ? (models.find((m) => m.id === modeloVisible)?.name ??
+      t.chat.main.modelFallback)
+    : (defaultName ?? t.chat.main.modelDefault);
   const conexionEtiqueta = selectedDevice
     ? `${selectedDeviceLive ? "● " : ""}${selectedDevice.name}`
-    : "General";
+    : t.chat.main.general;
 
   const isPanel = variant === "panel";
 
@@ -802,10 +785,11 @@ export default function ChatPrincipalWraper({
     : null;
   const ProgressIcon = progressMeta?.icon;
 
-  const progressLabel =
-    agentProgress?.phase === "unknown" && agentProgress.phaseRaw
-      ? `Fase «${agentProgress.phaseRaw}»`
-      : progressMeta?.label;
+  const progressLabel = agentProgress
+    ? agentProgress.phase === "unknown" && agentProgress.phaseRaw
+      ? interp(t.chat.main.phase, { phase: agentProgress.phaseRaw })
+      : progressLabels[agentProgress.phase]
+    : undefined;
 
   const handleCopy = useCallback((msgId: string, text: string) => {
     void navigator.clipboard
@@ -837,21 +821,23 @@ export default function ChatPrincipalWraper({
           >
             <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
 
-              <span className="eyebrow">Historial · {chats.length}</span>
+              <span className="eyebrow">
+                {interp(t.chat.main.history, { count: chats.length })}
+              </span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     id="btn-collapse-sidebar"
                     variant="ghost"
                     size="icon-xs"
-                    aria-label="Colapsar historial"
+                    aria-label={t.chat.main.collapseHistory}
                     className="text-muted-foreground hover:text-foreground"
                     onClick={() => setIsCollapsed(true)}
                   >
                     <PanelLeftClose className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Colapsar historial</TooltipContent>
+                <TooltipContent>{t.chat.main.collapseHistory}</TooltipContent>
               </Tooltip>
             </div>
             <div className="flex-1 min-h-0 overflow-hidden">
@@ -869,14 +855,14 @@ export default function ChatPrincipalWraper({
                     id="btn-expand-sidebar"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Mostrar historial"
+                    aria-label={t.chat.main.showHistory}
                     className="shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setIsCollapsed(false)}
                   >
                     <PanelLeftOpen className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Mostrar historial</TooltipContent>
+                <TooltipContent>{t.chat.main.showHistory}</TooltipContent>
               </Tooltip>
             )}
 
@@ -884,7 +870,7 @@ export default function ChatPrincipalWraper({
               id="btn-mobile-history"
               variant="ghost"
               size="icon-sm"
-              aria-label="Historial de conversaciones"
+              aria-label={t.chat.main.conversationHistory}
               className={cn(
                 "shrink-0 text-muted-foreground hover:text-foreground",
                 !isPanel && "md:hidden",
@@ -895,7 +881,7 @@ export default function ChatPrincipalWraper({
             </Button>
 
             <p className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-[-0.005em] text-foreground">
-              {activeChat?.title ?? "Nueva conversación"}
+              {activeChat?.title ?? t.chat.main.newConversation}
             </p>
 
             <span className="spacer hidden flex-1 sm:block" />
@@ -916,14 +902,14 @@ export default function ChatPrincipalWraper({
                     <Lock className="size-3 shrink-0" />
                   )}
                   <span className="hidden font-mono text-[10.5px] font-semibold uppercase tracking-[0.09em] sm:inline">
-                    Modo autónomo
+                    {t.chat.main.autonomousMode}
                   </span>
                   <span className="flex items-center">
                     <Switch
                       checked={autonomousMode}
                       onCheckedChange={setAutonomousMode}
                       disabled={!canApprove}
-                      aria-label="Modo Autónomo"
+                      aria-label={t.chat.main.autonomousAria}
                       className="scale-[0.72] origin-center"
                     />
                   </span>
@@ -931,8 +917,8 @@ export default function ChatPrincipalWraper({
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 {canApprove
-                  ? "Si se activa, las acciones de configuración se ejecutan sin pedir aprobación. Solo ADMIN/STAFF."
-                  : "Requiere rol STAFF o ADMIN"}
+                  ? t.chat.main.autonomousOn
+                  : t.chat.main.autonomousOff}
               </TooltipContent>
             </Tooltip>
 
@@ -951,16 +937,15 @@ export default function ChatPrincipalWraper({
                       <Network className="size-5" />
                     </span>
                     <h1 className="text-[20px] font-semibold text-foreground">
-                      Asistente multi-agente de redes
+                      {t.chat.main.emptyTitle}
                     </h1>
                     <p className="max-w-[34rem] text-[15px] leading-relaxed text-muted-foreground">
-                      Configura, diagnostica y audita tus equipos. Cada cambio
-                      de configuración se escribe solo con tu aprobación.
+                      {t.chat.main.emptyDescription}
                     </p>
                   </div>
                   <div className="flex w-full max-w-2xl flex-col gap-3">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {SUGGESTIONS.map(
+                      {suggestions.map(
                         ({ icon: Icon, title, desc, prompt }) => (
                           <button
                             key={title}
@@ -986,9 +971,9 @@ export default function ChatPrincipalWraper({
 
                     <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                       <span className="eyebrow">
-                        Más ideas:
+                        {t.chat.main.moreIdeas}
                       </span>
-                      {MORE_IDEAS.map(({ label, prompt }) => (
+                      {moreIdeas.map(({ label, prompt }) => (
                         <button
                           key={label}
                           type="button"
@@ -1019,7 +1004,7 @@ export default function ChatPrincipalWraper({
                             {m.content}
                           </div>
                           <div className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
-                            <span>{formatoHora(m.createdAt)}</span>
+                            <span>{formatoHora(m.createdAt, locale)}</span>
                             <Avatar role="user" />
                           </div>
                         </div>
@@ -1088,8 +1073,12 @@ export default function ChatPrincipalWraper({
                               className="gap-1.5 border-primary/30 bg-primary/5 text-[10px] font-mono uppercase tracking-wider text-primary animate-pulse"
                             >
                               <ArrowRightLeft className="size-3 shrink-0" />
-                              Delegando a{" "}
-                              {HANDOFF_LABELS[handoff.to] ?? handoff.to}
+                              {interp(t.chat.main.delegating, {
+                                agent:
+                                  handoff.to === "general"
+                                    ? t.chat.main.handoff.general
+                                    : (HANDOFF_LABELS[handoff.to] ?? handoff.to),
+                              })}
                             </Badge>
                           )}
 
@@ -1102,9 +1091,11 @@ export default function ChatPrincipalWraper({
                                 className="w-auto text-[12.5px] text-muted-foreground hover:text-foreground"
                                 getThinkingMessage={(streaming) =>
                                   streaming ? (
-                                    <Shimmer duration={1}>Pensando…</Shimmer>
+                                    <Shimmer duration={1}>
+                                      {t.chat.main.thinking}
+                                    </Shimmer>
                                   ) : (
-                                    <span>Razonamiento</span>
+                                    <span>{t.chat.main.reasoning}</span>
                                   )
                                 }
                               />
@@ -1210,8 +1201,8 @@ export default function ChatPrincipalWraper({
                                 {toolsInFlight.some(
                                   (t) => t.status === "running",
                                 )
-                                  ? "Ejecutando herramientas…"
-                                  : "Pensando…"}
+                                  ? t.chat.main.executingTools
+                                  : t.chat.main.thinking}
                               </Shimmer>
                             </div>
                           )}
@@ -1254,7 +1245,7 @@ export default function ChatPrincipalWraper({
               >
                 <SelectTrigger
                   id="select-model"
-                  aria-label="Modelo LLM"
+                  aria-label={t.chat.main.modelLabel}
                   title={modeloEtiqueta}
                   className="h-8 w-[130px] sm:w-[190px] justify-between gap-1.5 text-[11px] font-mono cursor-pointer focus-visible:ring-1 focus-visible:ring-ring"
                 >
@@ -1268,7 +1259,8 @@ export default function ChatPrincipalWraper({
                     value="default"
                     className="font-mono text-xs cursor-pointer"
                   >
-                    Predeterminado{defaultName ? ` · ${defaultName}` : ""}
+                    {t.chat.main.modelDefault}
+                    {defaultName ? ` · ${defaultName}` : ""}
                   </SelectItem>
                   {models.map((m) => (
                     <SelectItem
@@ -1290,7 +1282,7 @@ export default function ChatPrincipalWraper({
               >
                 <SelectTrigger
                   id="select-connection"
-                  aria-label="Conexión"
+                  aria-label={t.chat.main.connectionLabel}
                   title={conexionEtiqueta}
                   className="h-8 w-[120px] sm:w-[190px] justify-between gap-1.5 text-[11px] font-mono cursor-pointer focus-visible:ring-1 focus-visible:ring-ring"
                 >
@@ -1304,7 +1296,7 @@ export default function ChatPrincipalWraper({
                     value="none"
                     className="font-mono text-xs cursor-pointer"
                   >
-                    General
+                    {t.chat.main.general}
                   </SelectItem>
                   {grouped.map((group) => (
                     <SelectGroup key={group.protocol}>
@@ -1333,7 +1325,7 @@ export default function ChatPrincipalWraper({
         <Dialog open={mobileHistoryOpen} onOpenChange={setMobileHistoryOpen}>
           <DialogContent className="p-0 h-[75dvh] max-w-sm w-[calc(100vw-2rem)] overflow-hidden flex flex-col">
             <DialogTitle className="sr-only">
-              Historial de conversaciones
+              {t.chat.main.conversationHistory}
             </DialogTitle>
             <div className="flex-1 min-h-0 overflow-hidden">
               <SidebarChatHistory />

@@ -1,3 +1,4 @@
+import { useT } from "@/hooks/useT";
 import {
   InlineCode,
   Paragraph,
@@ -7,53 +8,59 @@ import {
 } from "./primitives";
 
 export default function Usuarios() {
+  const t = useT();
+  const section = t.manual.usuarios;
+  const yes = t.common.yes;
+
   return (
     <div className="space-y-5">
       <Paragraph>
-        <strong>Usuarios</strong> es la lista de personas que pueden entrar al
-        sistema. Solo el administrador la ve y es quien crea o quita cuentas.
+        <strong>{t.nav.users}</strong> {section.intro}
       </Paragraph>
 
-      <SubTitle>Cómo se usa</SubTitle>
+      <SubTitle>{section.howToUse}</SubTitle>
       <Steps
         items={[
           {
-            title: "Crea una cuenta",
-            description:
-              "Pulsa Registrar Operador, escribe el nombre, la contraseña y elige su rol.",
+            title: section.steps.create.title,
+            description: section.steps.create.description,
           },
           {
-            title: "Cambia o quita cuentas",
-            description:
-              "Usa el lápiz para cambiar la contraseña o el rol, y la papelera para eliminar.",
+            title: section.steps.manage.title,
+            description: section.steps.manage.description,
           },
         ]}
       />
 
-      <SubTitle>Roles y permisos</SubTitle>
+      <SubTitle>{section.rolesTitle}</SubTitle>
       <Paragraph>
-        Hay 3 tipos de usuario, del que menos puede al que más puede:{" "}
-        <InlineCode>USER</InlineCode>, <InlineCode>STAFF</InlineCode> y{" "}
-        <InlineCode>ADMIN</InlineCode>. Cada nivel incluye lo del anterior.
+        {section.rolesIntro} <InlineCode>USER</InlineCode>,{" "}
+        <InlineCode>STAFF</InlineCode> {section.rolesAnd}{" "}
+        <InlineCode>ADMIN</InlineCode>. {section.rolesSuffix}
       </Paragraph>
       <SimpleTable
-        headers={["Qué puede hacer", "USER", "STAFF", "ADMIN"]}
+        headers={[
+          section.tableHeaders.canDo,
+          "USER",
+          "STAFF",
+          "ADMIN",
+        ]}
         rows={[
-          ["Ver el sistema", "Sí", "Sí", "Sí"],
-          ["Usar el Chat y ver sus propios avisos", "Sí", "Sí", "Sí"],
-          ["Usar la Terminal (solo mirar)", "Sí", "Sí", "Sí"],
-          ["Agregar y manejar equipos", "—", "Sí", "Sí"],
-          ["Programar tareas automáticas", "—", "Sí", "Sí"],
-          ["Ver los avisos de todos", "—", "Sí", "Sí"],
-          ["Subir documentos a Datos", "—", "Sí", "Sí"],
-          ["Aprobar lo que hace el asistente", "—", "Sí", "Sí"],
-          ["Manejar usuarios, modelos y borrar registros", "—", "—", "Sí"],
+          [section.table.view, yes, yes, yes],
+          [section.table.chat, yes, yes, yes],
+          [section.table.terminal, yes, yes, yes],
+          [section.table.devices, "—", yes, yes],
+          [section.table.jobs, "—", yes, yes],
+          [section.table.alerts, "—", yes, yes],
+          [section.table.data, "—", yes, yes],
+          [section.table.approve, "—", yes, yes],
+          [section.table.admin, "—", "—", yes],
         ]}
       />
       <Paragraph>
-        El menú cambia según tu rol: <InlineCode>Datos</InlineCode>,{" "}
-        <InlineCode>Usuarios</InlineCode> y <InlineCode>Configuración</InlineCode>{" "}
-        solo las ven los <InlineCode>ADMIN</InlineCode>.
+        {section.menuPrefix} <InlineCode>{t.nav.data}</InlineCode>,{" "}
+        <InlineCode>{t.nav.users}</InlineCode> {section.menuMiddle}{" "}
+        <InlineCode>{t.nav.configuration}</InlineCode> {section.menuSuffix}
       </Paragraph>
     </div>
   );

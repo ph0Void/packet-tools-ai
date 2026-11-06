@@ -10,6 +10,9 @@ import WorkspaceContainer from "./WorkspaceContainer";
 import BridgeStatusBadge from "./BridgeStatusBadge";
 import { extractLiveTopology } from "./topology-json";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 
 interface WorkspaceIndexClientProps {
   canEdit?: boolean;
@@ -18,6 +21,7 @@ interface WorkspaceIndexClientProps {
 export default function WorkspaceIndexClient({
   canEdit = false,
 }: WorkspaceIndexClientProps) {
+  const t = useT();
   const { status, emitToolCall } = useCiscoSocket();
   const setTopology = useTopologyStore((s) => s.setTopology);
   const [showLive, setShowLive] = useState(false);
@@ -31,24 +35,27 @@ export default function WorkspaceIndexClient({
       setTopology({ devices: live.devices, links: live.links });
 
       if (live.devices.length === 0 && live.links.length === 0) {
-        toast.warning("Topología vacía: abre tu proyecto en Packet Tracer");
+        toast.warning(t.workspace.index.toasts.empty);
       } else {
         toast.success(
-          `${live.devices.length} dispositivos, ${live.links.length} enlaces cargados`
+          interp(t.workspace.index.toasts.loaded, {
+            devices: live.devices.length,
+            links: live.links.length,
+          })
         );
       }
       setShowLive(true);
     } catch (error) {
       console.error(error);
-      toast.error(
+      notifyError(
         error instanceof Error
           ? error.message
-          : "No se pudo leer la red desde Packet Tracer"
+          : t.workspace.index.toasts.readError
       );
     } finally {
       setIsSyncing(false);
     }
-  }, [emitToolCall, setTopology]);
+  }, [emitToolCall, setTopology, t]);
 
   if (showLive) {
     return <WorkspaceContainer canEdit={canEdit} />;
@@ -79,11 +86,10 @@ export default function WorkspaceIndexClient({
 
       <div className="space-y-2">
         <h1 className="text-xl font-bold tracking-tight">
-          No hay topología cargada
+          {t.workspace.index.emptyTitle}
         </h1>
         <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mx-auto">
-          El puente lee en tiempo real la topología abierta en Packet Tracer y
-          la dibuja aquí.
+          {t.workspace.index.emptyDescription}
         </p>
       </div>
 
@@ -97,12 +103,12 @@ export default function WorkspaceIndexClient({
             {isSyncing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                SINCRONIZANDO...
+                {t.workspace.index.syncing}
               </>
             ) : (
               <>
                 <Radio className="w-4 h-4 animate-pulse" />
-                CONECTAR WORKSPACE LIVE
+                {t.workspace.index.connectLive}
               </>
             )}
           </Button>
@@ -113,7 +119,7 @@ export default function WorkspaceIndexClient({
             className="border-amber-500/30 text-amber-500 bg-amber-500/5 font-semibold gap-2 w-full sm:w-auto"
           >
             <Loader2 className="w-4 h-4 animate-spin" />
-            CONECTANDO AL PUENTE...
+            {t.workspace.index.connecting}
           </Button>
         ) : (
           <Button
@@ -122,12 +128,14 @@ export default function WorkspaceIndexClient({
             className="border-rose-500/30 text-rose-500/70 bg-rose-500/5 font-semibold gap-2 w-full sm:w-auto"
           >
             <AlertTriangle className="w-4 h-4" />
-            PUENTE PT NO DETECTADO
+            {t.workspace.index.notDetected}
           </Button>
         )}
 
         <Button variant="outline" asChild className="cursor-pointer w-full sm:w-auto">
-          <Link href="/dashboard/topology">Ver Topologías Guardadas</Link>
+          <Link href="/dashboard/topology">
+            {t.workspace.index.savedTopologies}
+          </Link>
         </Button>
       </div>
     </div>

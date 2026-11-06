@@ -1,13 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/action/SecureAction";
 import { getAlerts } from "@/service/AlertService";
 import { getTopologies } from "@/service/TopologyService";
 import TableAlertWrapper from "@/component/alert/TableAlertWrapper";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools -  Alertas",
-  description: "Registro, auditoría y resolución de incidencias de red",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.alert.title}`,
+    description: t.dashboard.metadata.alert.description,
+  };
+}
 
 export default async function AlertPage() {
   const user = await getSessionUser();

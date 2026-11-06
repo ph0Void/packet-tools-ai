@@ -4,20 +4,24 @@ import { useState } from "react";
 import { Check, ChevronDown, LoaderCircle } from "lucide-react";
 import type { SubagentEvent } from "@/hooks/useCiscoChat";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 
 const LABELS: Record<string, string> = {
   packet_tracer_specialist: "Packet Tracer",
   gns3_specialist: "GNS3",
   ssh_specialist: "SSH",
   telnet_specialist: "Telnet",
-  serial_specialist: "Puerto serie",
-  knowledge_specialist: "Conocimiento",
-  system_admin_specialist: "Administración",
-  "general-purpose": "General",
 };
 
-export function etiquetaSubagente(name: string): string {
+export function etiquetaSubagente(
+  name: string,
+  t: ReturnType<typeof useT>,
+): string {
   if (LABELS[name]) return LABELS[name];
+  if (name === "serial_specialist") return t.chat.subagent.labels.serial;
+  if (name === "knowledge_specialist") return t.chat.subagent.labels.knowledge;
+  if (name === "system_admin_specialist") return t.chat.subagent.labels.admin;
+  if (name === "general-purpose") return t.chat.subagent.labels.general;
   return name
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -31,6 +35,7 @@ export function SubagentChip({
   className?: string;
 }) {
   const [expandido, setExpandido] = useState<string | null>(null);
+  const t = useT();
   if (subagents.length === 0) return null;
 
   return (
@@ -71,10 +76,10 @@ export function SubagentChip({
                 aria-expanded={abierto}
               >
                 <span className="text-[12.5px] font-medium tracking-[-0.002em] text-foreground">
-                  Delegación a sub-agente
+                  {t.chat.subagent.delegation}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
-                  {sub.name} · contexto aislado
+                  {sub.name} · {t.chat.subagent.isolated}
                 </span>
                 <ChevronDown
                   className={cn(
@@ -87,11 +92,11 @@ export function SubagentChip({
               {abierto && (
                 <p className="pt-1 pb-2 text-[12px] leading-relaxed text-muted-foreground">
                   <span className="font-medium text-foreground">
-                    {enCurso ? "Delegando a " : ""}
-                    {etiquetaSubagente(sub.name)}
+                    {enCurso ? `${t.chat.subagent.delegating} ` : ""}
+                    {etiquetaSubagente(sub.name, t)}
                     {enCurso ? "… " : ": "}
                   </span>
-                  {sub.summary ?? sub.task ?? "Sin detalle."}
+                  {sub.summary ?? sub.task ?? t.chat.subagent.noDetail}
                 </p>
               )}
             </div>

@@ -1,3 +1,14 @@
+import { getDictionary } from "@/i18n";
+import { LOCALE_COOKIE } from "@/i18n/types";
+import { interp } from "@/i18n/interp";
+
+function diccionario() {
+  const esEn =
+    typeof document !== "undefined" &&
+    new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=en(?:;|$)`).test(document.cookie);
+  return getDictionary(esEn ? "en" : "es");
+}
+
 export const MAX_COMANDOS_STANDARD = 30;
 
 export const COMANDOS_DE_CIERRE: readonly string[] = [
@@ -78,20 +89,12 @@ export function motivoDispositivoNoSoportado(
   }
   if (protocolo === "SIMULATION" && tipo === "PACKET_TRACER") return null;
   if (protocolo === "SIMULATION" && tipo === "GNS3") {
-    return (
-      "Las automatizaciones estándar no ejecutan comandos sobre nodos GNS3: " +
-      "no hay forma de abrir una sesión de consola contra un nodo de GNS3 " +
-      "desde el backend. Usa una automatización inteligente (el agente sí " +
-      "sabe operar la topología) o un dispositivo con SSH, Telnet o serie."
-    );
+    return diccionario().jobs.standardNotSupported.gns3;
   }
   if (protocolo === "SIMULATION") {
-    return (
-      `Protocolo SIMULATION con tipo de dispositivo '${tipo}' sin ejecución ` +
-      "de comandos automática."
-    );
+    return interp(diccionario().jobs.standardNotSupported.simulation, { tipo });
   }
-  return `Protocolo '${protocolo}' no soportado por las automatizaciones estándar.`;
+  return interp(diccionario().jobs.standardNotSupported.protocol, { protocolo });
 }
 
 export function admiteComandosStandard(

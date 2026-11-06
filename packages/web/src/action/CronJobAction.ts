@@ -12,6 +12,7 @@ import type {
   CronJobInput,
   CronJobRunResult,
 } from "@/service/CronJobService";
+import { getServerDictionary } from "@/i18n/server";
 import type { FormState } from "@/types/actions";
 
 export type FormCronJobState<T = unknown> = FormState<T>;
@@ -34,6 +35,9 @@ export async function createCronJobAction(
   prevState: FormCronJobState,
   formData: FormData,
 ): Promise<FormCronJobState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.jobs;
+
   try {
     const name = (formData.get("name") as string)?.trim();
     const description = formData.get("description") as string;
@@ -49,7 +53,7 @@ export async function createCronJobAction(
     if (!name) {
       return {
         success: false,
-        message: "Faltan campos obligatorios (Nombre y Tipo de acción).",
+        message: messages.fieldsRequired,
       };
     }
 
@@ -74,25 +78,26 @@ export async function createCronJobAction(
     revalidatePath(RUTA_AUTOMATIZACIONES);
     return {
       success: true,
-      message: result.message || "Tarea programada creada correctamente.",
+      message: result.message || messages.created,
       data: result.data,
     };
   } catch (error) {
     console.error("Error en createCronJobAction:", error);
     return {
       success: false,
-      message: "Error al crear la tarea programada.",
+      message: messages.createError,
     };
   }
 }
 
 export async function getAllCronJobsAction(): Promise<FormCronJobState> {
+  const t = await getServerDictionary();
   const result = await getJobs();
 
   if (!result.success) {
     return {
       success: false,
-      message: result.message || "Error al consultar tareas.",
+      message: result.message || t.forms.jobs.fetchError,
       data: [],
     };
   }
@@ -104,6 +109,7 @@ export async function toggleCronJobAction(
   id: string,
   isActive: boolean,
 ): Promise<FormCronJobState> {
+  const t = await getServerDictionary();
   const result = await setJobActive(id, isActive);
 
   if (!result.success) {
@@ -111,12 +117,16 @@ export async function toggleCronJobAction(
   }
 
   revalidatePath(RUTA_AUTOMATIZACIONES);
-  return { success: true, message: result.message || "Estado actualizado." };
+  return {
+    success: true,
+    message: result.message || t.forms.jobs.statusUpdated,
+  };
 }
 
 export async function deleteCronJobAction(
   id: string,
 ): Promise<FormCronJobState> {
+  const t = await getServerDictionary();
   const result = await deleteJob(id);
 
   if (!result.success) {
@@ -124,12 +134,13 @@ export async function deleteCronJobAction(
   }
 
   revalidatePath(RUTA_AUTOMATIZACIONES);
-  return { success: true, message: result.message || "Tarea eliminada." };
+  return { success: true, message: result.message || t.forms.jobs.deleted };
 }
 
 export async function runJobAction(
   id: string,
 ): Promise<FormCronJobState<CronJobRunResult>> {
+  const t = await getServerDictionary();
   const result = await runJob(id);
 
   if (!result.success) {
@@ -139,7 +150,7 @@ export async function runJobAction(
   revalidatePath(RUTA_AUTOMATIZACIONES);
   return {
     success: true,
-    message: result.message || "Ejecución de la tarea programada.",
+    message: result.message || t.forms.jobs.run,
     data: result.data ?? undefined,
   };
 }

@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import {
-  Book,
   BookOpen,
   Eye,
   FileText,
@@ -15,6 +14,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import {
   deleteDocumentAction,
   getDocumentsAction,
@@ -26,6 +26,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { useT, useLocale } from "@/hooks/useT";
+import { interp } from "@/i18n/interp";
+import { playSound } from "@/lib/sounds/playSound";
+import UploadProgressCard from "./UploadProgressCard";
 
 const ALLOWED_EXTENSIONS = [".pdf", ".txt", ".md"];
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
@@ -55,13 +59,13 @@ function mimeBadge(mime: string | null): { label: string; className: string } {
   }
 }
 
-function validateClientFile(file: File): string | null {
+function validateClientFile(file: File): "format" | "size" | null {
   const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
   if (!ALLOWED_EXTENSIONS.includes(extension)) {
-    return "Formato no permitido. Solo se aceptan archivos .pdf, .txt y .md.";
+    return "format";
   }
   if (file.size > MAX_FILE_SIZE) {
-    return "El archivo supera el límite de 25MB.";
+    return "size";
   }
   return null;
 }
@@ -75,6 +79,8 @@ export default function KnowledgeBaseManager({
   initialDocuments,
   canManage,
 }: KnowledgeBaseManagerProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const router = useRouter();
   const [documents, setDocuments] =
     useState<KnowledgeDocument[]>(initialDocuments);
@@ -82,8 +88,10 @@ export default function KnowledgeBaseManager({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [title, setTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastAutoRef = useRef<string | null>(null);
 
   const [state, formAction, isPending] = useActionState(
     uploadDocumentAction,
@@ -96,8 +104,11 @@ export default function KnowledgeBaseManager({
       let progressReset: ReturnType<typeof setTimeout> | undefined;
       const applyResult = setTimeout(() => {
         if (state.success) {
-          toast.success(state.message || "Documento subido correctamente.");
+          toast.success(t.data.upload.success);
+          playSound("upload");
           setSelectedFile(null);
+          setTitle("");
+          lastAutoRef.current = null;
           setSearchTerm("");
           if (fileInputRef.current) fileInputRef.current.value = "";
           void (async () => {
@@ -108,7 +119,9 @@ export default function KnowledgeBaseManager({
           })();
           router.refresh();
         } else {
-          toast.error(state.message);
+          notifyError(state.message);
+          setSelectedFile(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
         }
         setProgress(100);
         progressReset = setTimeout(() => setProgress(0), 1200);
@@ -124,17 +137,21 @@ export default function KnowledgeBaseManager({
       setProgress((prev) => Math.min(prev + 7, 90));
     }, 300);
     return () => clearInterval(interval);
-  }, [state, isPending, router]);
+  }, [state, isPending, router, t]);
 
   const handleFileSelection = (file: File | undefined | null) => {
     if (!file) return;
     const error = validateClientFile(file);
     if (error) {
-      toast.error(error);
+      notifyError(t.data.errors[error]);
       if (fileInputRef.current) fileInputRef.current.value = "";
       setSelectedFile(null);
       return;
     }
+    const prevAuto = lastAutoRef.current;
+    const base = file.name.replace(/\.(pdf|txt|md)$/i, "");
+    lastAutoRef.current = base;
+    setTitle((prev) => (prev === "" || prev === prevAuto ? base : prev));
     setSelectedFile(file);
   };
 
@@ -143,7 +160,7 @@ export default function KnowledgeBaseManager({
       const error = validateClientFile(selectedFile);
       if (error) {
         e.preventDefault();
-        toast.error(error);
+        notifyError(t.data.errors[error]);
       }
     }
   };
@@ -151,7 +168,7 @@ export default function KnowledgeBaseManager({
   const handleDelete = async (doc: KnowledgeDocument) => {
     if (
       !confirm(
-        `¿Eliminar el documento "${doc.title}" de la base de conocimiento?`,
+        interp(t.data.remove.confirm, { title: doc.title }),
       )
     ) {
       return;
@@ -160,11 +177,11 @@ export default function KnowledgeBaseManager({
     const result = await deleteDocumentAction(doc.id);
     setDeletingId(null);
     if (result.success) {
-      toast.success(result.message || "Documento eliminado.");
+      toast.success(result.message || t.data.remove.success);
       setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
       router.refresh();
     } else {
-      toast.error(result.message || "Error al eliminar el documento.");
+      notifyError(result.message || t.data.remove.error);
     }
   };
 
@@ -174,6 +191,17 @@ export default function KnowledgeBaseManager({
       (doc.description ?? "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  const visualState: "uploading" | "success" | "error" | null = isPending
+    ? "uploading"
+    : progress === 100
+      ? state.success
+        ? "success"
+        : "error"
+      : null;
+  const fileSizeLabel = selectedFile
+    ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`
+    : "";
+
   return (
     <div className="space-y-6">
 
@@ -181,11 +209,10 @@ export default function KnowledgeBaseManager({
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <LibraryBig className="h-5 w-5 text-primary" />
-            Base de Conocimiento RAG
+            {t.data.header.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Documentos y manuales técnicos indexados vectorialmente para
-            consulta agéntica.
+            {t.data.header.description}
           </p>
         </div>
 
@@ -196,7 +223,6 @@ export default function KnowledgeBaseManager({
           action={formAction}
           onSubmit={handleValidateBeforeSubmit}
           className="rounded-xl border border-border bg-card p-4 md:p-6 shadow-sm space-y-4"
-          encType="multipart/form-data"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
@@ -204,104 +230,115 @@ export default function KnowledgeBaseManager({
             </div>
             <div>
               <h2 className="text-lg font-bold tracking-tight">
-                Subir documento
+                {t.data.upload.title}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Archivos .pdf, .txt o .md de hasta 25MB. Quedarán indexados para
-                RAG.
+                {t.data.upload.hint}
               </p>
             </div>
           </div>
 
-          <label
-            htmlFor="kb-file-input"
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              const file = e.dataTransfer.files?.[0];
-              if (fileInputRef.current && file) {
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                fileInputRef.current.files = dt.files;
-              }
-              handleFileSelection(file);
-            }}
-            className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-all duration-200 ${
-              dragging
-                ? "border-primary bg-primary/10"
-                : "border-border hover:border-primary/50 hover:bg-muted/40"
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              id="kb-file-input"
-              type="file"
-              name="file"
-              accept=".pdf,.txt,.md"
-              className="sr-only"
-              onChange={(e) => handleFileSelection(e.target.files?.[0])}
+          {visualState ? (
+            <UploadProgressCard
+              fileName={selectedFile?.name ?? ""}
+              fileSizeLabel={fileSizeLabel}
+              progress={progress}
+              state={visualState}
             />
-            <UploadCloud className="w-8 h-8 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              Arrastra un archivo aquí o haz clic para seleccionarlo
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {selectedFile
-                ? `Seleccionado: ${selectedFile.name} (${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)`
-                : ".pdf · .txt · .md · máx 25MB"}
-            </p>
-          </label>
-
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-            <div className="space-y-2 flex-1">
+          ) : (
+            <>
               <label
-                htmlFor="kb-title-input"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                htmlFor="kb-file-input"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (fileInputRef.current && file) {
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    fileInputRef.current.files = dt.files;
+                  }
+                  handleFileSelection(file);
+                }}
+                className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-all duration-200 ${
+                  dragging
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/50 hover:bg-muted/40"
+                }`}
               >
-                Título personalizado (opcional)
+                <input
+                  ref={fileInputRef}
+                  id="kb-file-input"
+                  type="file"
+                  name="file"
+                  accept=".pdf,.txt,.md"
+                  className="sr-only"
+                  onChange={(e) => handleFileSelection(e.target.files?.[0])}
+                />
+                <UploadCloud
+                  className={
+                    dragging
+                      ? "w-8 h-8 text-primary anim-float-y"
+                      : "w-8 h-8 text-muted-foreground"
+                  }
+                />
+                <p className="text-sm font-medium">
+                  {t.data.upload.dropzone}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedFile
+                    ? interp(t.data.upload.selected, {
+                        name: selectedFile.name,
+                        size: (selectedFile.size / (1024 * 1024)).toFixed(1),
+                      })
+                    : t.data.upload.formats}
+                </p>
               </label>
-              <Input
-                id="kb-title-input"
-                name="title"
-                placeholder="Ej: Manual de comandos Cisco IOS 15"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={isPending || !selectedFile}
-              className="gap-2 w-full sm:w-auto"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Subiendo e
-                  indexando...
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="w-4 h-4" /> Subir Documento
-                </>
-              )}
-            </Button>
-          </div>
 
-          {progress > 0 && (
-            <div
-              role="progressbar"
-              aria-valuenow={progress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              className="h-2 w-full rounded-full bg-muted overflow-hidden"
-            >
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                <div className="space-y-2 flex-1">
+                  <label
+                    htmlFor="kb-title-input"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {t.data.upload.titleLabel}
+                  </label>
+                  <Input
+                    id="kb-title-input"
+                    name="title"
+                    placeholder={t.data.upload.titlePlaceholder}
+                    value={title}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setTitle(v);
+                      if (v === "") lastAutoRef.current = null;
+                    }}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isPending || !selectedFile}
+                  className="gap-2 w-full sm:w-auto"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                      {t.data.upload.submitting}
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-4 h-4" />{" "}
+                      {t.data.upload.submit}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
           )}
         </form>
       )}
@@ -314,22 +351,22 @@ export default function KnowledgeBaseManager({
             </div>
             <div>
               <h2 className="text-lg font-bold tracking-tight">
-                Documentos indexados
+                {t.data.list.title}
               </h2>
               <p className="text-xs text-muted-foreground">
                 {canManage
-                  ? "Gestiona los documentos disponibles para la IA."
-                  : "Consulta los documentos disponibles para la IA."}
+                  ? t.data.list.hintManage
+                  : t.data.list.hintRead}
               </p>
             </div>
           </div>
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar documentos..."
+              placeholder={t.data.list.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Buscar documentos"
+              aria-label={t.data.list.searchAria}
               className="pl-9 text-sm"
             />
           </div>
@@ -340,10 +377,12 @@ export default function KnowledgeBaseManager({
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase border-b border-border">
                 <tr>
-                  <th className="p-4">Título</th>
-                  <th className="p-4">Tipo</th>
-                  <th className="p-4">Fecha</th>
-                  <th className="p-4 text-right">Acciones</th>
+                  <th className="p-4">{t.data.list.columnTitle}</th>
+                  <th className="p-4">{t.data.list.columnType}</th>
+                  <th className="p-4">{t.data.list.columnDate}</th>
+                  <th className="p-4 text-right">
+                    {t.data.list.columnActions}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -355,8 +394,8 @@ export default function KnowledgeBaseManager({
                     >
                       <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
                       {documents.length === 0
-                        ? "No hay documentos en la base de conocimiento."
-                        : "Sin resultados para la búsqueda."}
+                        ? t.data.list.empty
+                        : t.data.list.noResults}
                     </td>
                   </tr>
                 ) : (
@@ -379,7 +418,9 @@ export default function KnowledgeBaseManager({
                           </Badge>
                         </td>
                         <td className="p-4 text-xs font-mono text-muted-foreground">
-                          {new Date(doc.createdAt).toLocaleDateString("es-ES")}
+                          {new Date(doc.createdAt).toLocaleDateString(
+                            locale === "en" ? "en-US" : "es-ES",
+                          )}
                         </td>
                         <td className="p-4 text-right space-x-1 whitespace-nowrap">
                           <Button size="icon" variant="ghost" asChild>
@@ -387,7 +428,9 @@ export default function KnowledgeBaseManager({
                               href={`/api/data/${doc.id}/file`}
                               target="_blank"
                               rel="noreferrer"
-                              aria-label={`Ver ${doc.title}`}
+                              aria-label={interp(t.data.list.viewAria, {
+                                title: doc.title,
+                              })}
                             >
                               <Eye className="w-4 h-4" />
                             </a>
@@ -398,7 +441,9 @@ export default function KnowledgeBaseManager({
                               variant="ghost"
                               className="text-destructive hover:bg-destructive/10"
                               disabled={deletingId === doc.id}
-                              aria-label={`Eliminar ${doc.title}`}
+                              aria-label={interp(t.data.list.deleteAria, {
+                                title: doc.title,
+                              })}
                               onClick={() => void handleDelete(doc)}
                             >
                               {deletingId === doc.id ? (

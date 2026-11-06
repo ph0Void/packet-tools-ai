@@ -12,60 +12,71 @@ import {
   updateSystemPrompt,
   type TestModelProviderInput,
 } from "@/service/ConfigService";
+import { getServerDictionary } from "@/i18n/server";
 import type { FormState } from "@/types/actions";
 
 export type FormConfigState = FormState;
 
 export async function getSystemConfigAction(): Promise<FormConfigState> {
+  const t = await getServerDictionary();
   const result = await getConfig();
 
   if (!result.success || !result.data) {
     return {
       success: false,
-      message: result.message || "No autorizado.",
+      message: result.message || t.forms.notAuthorized,
       data: null,
     };
   }
 
   return {
     success: true,
-    message: "Configuración obtenida correctamente",
+    message: t.forms.config.fetched,
     data: result.data,
   };
 }
 
 export async function getAvailableModelsAction(): Promise<FormConfigState> {
+  const t = await getServerDictionary();
   const result = await getAvailableModels();
 
   if (!result.success) {
     return {
       success: false,
-      message: result.message || "Error al obtener modelos disponibles.",
+      message: result.message || t.forms.config.modelsFetchError,
       data: [],
     };
   }
 
-  return { success: true, message: "Modelos obtenidos", data: result.data ?? [] };
+  return { success: true, message: t.forms.config.modelsFetched, data: result.data ?? [] };
 }
 
 export async function getAllModelProvidersAction(): Promise<FormConfigState> {
+  const t = await getServerDictionary();
   const result = await getModelProviders();
 
   if (!result.success) {
     return {
       success: false,
-      message: result.message || "Error al obtener proveedores.",
+      message: result.message || t.forms.config.providersFetchError,
       data: [],
     };
   }
 
-  return { success: true, message: "Proveedores obtenidos", data: result.data ?? [] };
+  return {
+    success: true,
+    message: t.forms.config.providersFetched,
+    data: result.data ?? [],
+  };
 }
 
 export async function saveModelProviderAction(
   prevState: FormConfigState,
   formData: FormData,
 ): Promise<FormConfigState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.config;
+
   try {
     const id = formData.get("id") as string;
     const name = (formData.get("name") as string)?.trim();
@@ -84,7 +95,7 @@ export async function saveModelProviderAction(
     if (!name || !modelName) {
       return {
         success: false,
-        message: "Nombre y modelo de IA son obligatorios.",
+        message: messages.providerRequired,
       };
     }
 
@@ -108,15 +119,15 @@ export async function saveModelProviderAction(
       return { success: false, message: result.message };
     }
 
-    revalidatePath("/dashboard/config");
+    revalidatePath("/dashboard/configuration");
     return {
       success: true,
-      message: "Modelo de IA guardado correctamente.",
+      message: messages.providerSaved,
       data: result.data,
     };
   } catch (error) {
     console.error("Error en saveModelProviderAction:", error);
-    return { success: false, message: "Error guardando el modelo." };
+    return { success: false, message: messages.providerSaveError };
   }
 }
 
@@ -124,7 +135,9 @@ export async function testModelProviderAction(
   prevState: FormConfigState,
   payload: TestModelProviderInput,
 ): Promise<FormConfigState> {
+  const t = await getServerDictionary();
   void prevState;
+
   try {
     const result = await testModelProvider(payload);
 
@@ -134,18 +147,20 @@ export async function testModelProviderAction(
 
     return {
       success: true,
-      message: result.message || "Conexión correcta.",
+      message: result.message || t.forms.config.connectionOk,
       data: result.data,
     };
   } catch (error) {
     console.error("Error en testModelProviderAction:", error);
-    return { success: false, message: "Error al probar la conexión." };
+    return { success: false, message: t.forms.config.connectionError };
   }
 }
 
 export async function deleteModelProviderAction(
   idModel: string,
 ): Promise<FormConfigState> {
+  const t = await getServerDictionary();
+
   try {
     const result = await deleteModelProvider(idModel);
 
@@ -153,11 +168,11 @@ export async function deleteModelProviderAction(
       return { success: false, message: result.message };
     }
 
-    revalidatePath("/dashboard/config");
-    return { success: true, message: "Modelo eliminado correctamente." };
+    revalidatePath("/dashboard/configuration");
+    return { success: true, message: t.forms.config.providerDeleted };
   } catch (error) {
     console.error("Error en deleteModelProviderAction:", error);
-    return { success: false, message: "Error al eliminar el modelo." };
+    return { success: false, message: t.forms.config.providerDeleteError };
   }
 }
 
@@ -165,6 +180,8 @@ export async function updateSystemPromptAction(
   prevState: FormConfigState,
   formData: FormData,
 ): Promise<FormConfigState> {
+  const t = await getServerDictionary();
+
   try {
     const systemPrompt = String(formData.get("systemPrompt") ?? "").trim();
 
@@ -172,7 +189,7 @@ export async function updateSystemPromptAction(
       return {
         ...prevState,
         success: false,
-        message: "El prompt del sistema no puede estar vacío.",
+        message: t.forms.config.systemPromptRequired,
       };
     }
 
@@ -182,17 +199,17 @@ export async function updateSystemPromptAction(
       return { ...prevState, success: false, message: result.message };
     }
 
-    revalidatePath("/dashboard/config");
+    revalidatePath("/dashboard/configuration");
     return {
       success: true,
-      message: "Prompt del sistema actualizado correctamente.",
+      message: t.forms.config.systemPromptUpdated,
     };
   } catch (error) {
     console.error("Error en updateSystemPromptAction:", error);
     return {
       ...prevState,
       success: false,
-      message: "Error al actualizar la configuración.",
+      message: t.forms.config.configUpdateError,
     };
   }
 }
@@ -200,14 +217,16 @@ export async function updateSystemPromptAction(
 export async function updateAgentLogsEnabledAction(
   enabled: boolean,
 ): Promise<FormConfigState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.config;
+
   try {
     const result = await updateAgentLogsEnabled(enabled);
 
     if (!result.success) {
       return {
         success: false,
-        message:
-          result.message || "No se pudo cambiar el registro de la traza del agente.",
+        message: result.message || messages.agentLogsToggleError,
       };
     }
 
@@ -216,16 +235,14 @@ export async function updateAgentLogsEnabledAction(
       success: true,
       message:
         result.message ||
-        (enabled
-          ? "Traza del agente activada."
-          : "Traza del agente desactivada."),
+        (enabled ? messages.agentLogsEnabled : messages.agentLogsDisabled),
       data: result.data,
     };
   } catch (error) {
     console.error("Error en updateAgentLogsEnabledAction:", error);
     return {
       success: false,
-      message: "Error al cambiar el registro de la traza del agente.",
+      message: messages.agentLogsChangeError,
     };
   }
 }

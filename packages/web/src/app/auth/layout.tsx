@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Acceso | Packet Tools",
-  description: "Inicia sesión o regístrate para acceder a Packet Tools.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+
+  return {
+    title: t.auth.meta.title,
+    description: t.auth.meta.description,
+  };
+}
 
 interface AuthLayoutProps {
   children: React.ReactNode;

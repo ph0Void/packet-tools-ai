@@ -10,6 +10,7 @@ import type {
 } from "@/hooks/useCiscoChat";
 import { useCaducidadAprobacion } from "@/hooks/useCaducidadAprobacion";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { useTerminalStore } from "@/store/terminal.store";
 import { confirmTerminalOpen } from "@/service/TerminalSessionService";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,8 @@ import {
 } from "./toolOutputViews";
 import "./toolCard.css";
 import { EstadoConsola, parseEstadoConsola } from "./ToolOutputEstate";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 
 const MAX_TEXTO = 1500;
 
@@ -106,7 +109,10 @@ function textoDesdeObjeto(objeto: Record<string, unknown>): string | null {
   return null;
 }
 
-export function parseSalida(tool: ToolExecution): SalidaParseada | null {
+export function parseSalida(
+  tool: ToolExecution,
+  t: ReturnType<typeof useT>,
+): SalidaParseada | null {
   if (typeof tool.output !== "string" || !tool.output.trim()) return null;
   const bruto = tool.output;
 
@@ -165,12 +171,13 @@ export function parseSalida(tool: ToolExecution): SalidaParseada | null {
 
   return {
     kind: "text",
-    text: "La herramienta devolvió datos estructurados. Ábrelos en «Detalles técnicos».",
+    text: t.chat.tool.structuredData,
   };
 }
 
 export function parseTerminalRequired(
-  tool?: ToolExecution,
+  tool: ToolExecution | undefined,
+  t: ReturnType<typeof useT>,
 ): { message: string; suggestedProviderId: string | null } | null {
   const salida = tool?.output;
   if (typeof salida !== "string" || !salida.includes("TERMINAL_REQUIRED")) {
@@ -193,7 +200,7 @@ export function parseTerminalRequired(
     message:
       typeof objeto.message === "string" && objeto.message.trim()
         ? objeto.message
-        : "No hay una consola de terminal conectada para ejecutar el comando.",
+        : t.chat.tool.terminalRequiredDefault,
     suggestedProviderId:
       typeof sugerido === "string" && sugerido.trim() ? sugerido : null,
   };
@@ -225,33 +232,57 @@ export type TonoMarco = TonoVisual;
 function subParaPaso(
   salida: SalidaParseada | null,
   comandos: string[],
+  t: ReturnType<typeof useT>,
   dispositivo?: string | null,
 ): string | null {
   if (comandos.length === 1) return acotar(comandos[0], 80);
   if (comandos.length > 1) {
     return dispositivo
-      ? `${comandos.length} comandos en ${dispositivo}`
-      : `${comandos.length} comandos`;
+      ? interp(t.chat.tool.sub.commandsIn, {
+          count: comandos.length,
+          device: dispositivo,
+        })
+      : interp(t.chat.tool.sub.commands, { count: comandos.length });
   }
   if (!salida) return null;
   switch (salida.kind) {
     case "web":
       return salida.vacio
-        ? "sin resultados"
-        : `${salida.resultados.length} ${salida.resultados.length === 1 ? "resultado" : "resultados"}`;
+        ? t.chat.tool.sub.noResults
+        : interp(
+            salida.resultados.length === 1
+              ? t.chat.tool.sub.resultOne
+              : t.chat.tool.sub.resultMany,
+            { count: salida.resultados.length },
+          );
     case "rag":
-      return `${salida.salida.fuentes.length} ${salida.salida.fuentes.length === 1 ? "fuente" : "fuentes"}`;
+      return interp(
+        salida.salida.fuentes.length === 1
+          ? t.chat.tool.sub.sourceOne
+          : t.chat.tool.sub.sourceMany,
+        { count: salida.salida.fuentes.length },
+      );
     case "devices":
-      return `${salida.devices.length} ${salida.devices.length === 1 ? "dispositivo" : "dispositivos"}`;
+      return interp(
+        salida.devices.length === 1
+          ? t.chat.tool.sub.deviceOne
+          : t.chat.tool.sub.deviceMany,
+        { count: salida.devices.length },
+      );
     case "terminal":
-      return `sesión ${salida.estado.viva ? "viva" : "caída"} · ${salida.estado.prompt ?? "sin prompt"}`;
+      return interp(
+        salida.estado.viva
+          ? t.chat.tool.sub.sessionAlive
+          : t.chat.tool.sub.sessionDown,
+        { prompt: salida.estado.prompt ?? t.chat.tool.sub.noPrompt },
+      );
     case "diagnostico":
       return salida.diag.texto
         ? acotar(salida.diag.texto.split("\n")[0] ?? "", 80)
         : (salida.diag.mensaje ?? null);
     case "config":
       return salida.ciclo.deviceName
-        ? `equipo ${salida.ciclo.deviceName}`
+        ? interp(t.chat.tool.sub.device, { name: salida.ciclo.deviceName })
         : null;
     case "output":
     case "text":
@@ -261,7 +292,10 @@ function subParaPaso(
   }
 }
 
-function metaParaPaso(salida: SalidaParseada | null): string | null {
+function metaParaPaso(
+  salida: SalidaParseada | null,
+  t: ReturnType<typeof useT>,
+): string | null {
   if (!salida) return null;
   const texto =
     salida.kind === "text" || salida.kind === "output"
@@ -271,7 +305,9 @@ function metaParaPaso(salida: SalidaParseada | null): string | null {
         : null;
   if (!texto) return null;
   const lineas = texto.split("\n").length;
-  return lineas > 1 ? `${lineas} líneas` : null;
+  return lineas > 1
+    ? interp(t.chat.tool.sub.lines, { count: lineas })
+    : null;
 }
 
 type TonoNodo = "ok" | "aviso" | "crit" | "info" | "run" | "mudo";
@@ -382,6 +418,7 @@ function DetallesTecnicos({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   const tieneEntrada = tool.input && Object.keys(tool.input).length > 0;
   const tieneSalida = typeof tool.output === "string" && tool.output.length > 0;
   if (!tieneEntrada && !tieneSalida) return null;
@@ -392,13 +429,13 @@ function DetallesTecnicos({
         type="button"
         id={`btn-tool-expand-${tool.id}`}
         onClick={onToggle}
-        aria-label="Ver detalles técnicos de la herramienta"
+        aria-label={t.chat.tool.details.aria}
         aria-expanded={expanded}
         className="tc-foot-btn"
       >
         <span className="flex items-center gap-1.5">
           <Terminal size={11} aria-hidden="true" />
-          Detalles técnicos
+          {t.chat.tool.details.title}
         </span>
         <ChevronDown
           size={12}
@@ -414,7 +451,7 @@ function DetallesTecnicos({
         <div className="tc-foot-body">
           {tieneEntrada && (
             <div>
-              <p className="tc-label mb-1">Entrada (JSON)</p>
+              <p className="tc-label mb-1">{t.chat.tool.details.input}</p>
               <pre className="tc-pre-inline custom-scrollbar max-h-48 !text-primary">
                 {JSON.stringify(tool.input, null, 2)}
               </pre>
@@ -422,7 +459,7 @@ function DetallesTecnicos({
           )}
           {tieneSalida && (
             <div>
-              <p className="tc-label mb-1">Salida (JSON)</p>
+              <p className="tc-label mb-1">{t.chat.tool.details.output}</p>
               <pre
                 className={cn(
                   "tc-pre-inline custom-scrollbar max-h-48",
@@ -499,6 +536,7 @@ function TarjetaConfirmacion({
 }) {
   const comandos =
     approval.commands.length > 0 ? approval.commands : extraerComandos(tool);
+  const t = useT();
 
   const peligroso = approval.risk === "dangerous";
   const caducidad = useCaducidadAprobacion(approval.expiresAt);
@@ -507,7 +545,12 @@ function TarjetaConfirmacion({
   const bloqueado = resolving || !canApprove || expirada;
   const sub =
     comandos.length > 0
-      ? `${comandos.length} ${comandos.length === 1 ? "comando" : "comandos"}${approval.deviceName ? ` en ${approval.deviceName}` : ""}`
+      ? approval.deviceName
+        ? interp(t.chat.tool.sub.commandsIn, {
+            count: comandos.length,
+            device: approval.deviceName,
+          })
+        : interp(t.chat.tool.sub.commands, { count: comandos.length })
       : (approval.deviceName ?? null);
 
   return (
@@ -535,7 +578,7 @@ function TarjetaConfirmacion({
             className="tc-hitl-title"
             data-tone={peligroso ? "peligro" : undefined}
           >
-            Requiere tu aprobación antes de escribir
+            {t.chat.tool.approval.title}
           </span>
           <span className="flex-1" />
           {approval.deviceName && (
@@ -549,26 +592,27 @@ function TarjetaConfirmacion({
           >
             <p className="tc-callout-title">
               {peligroso
-                ? "Acción destructiva: puede borrar configuración o reiniciar el equipo."
-                : "Va a cambiar la configuración del equipo."}
+                ? t.chat.tool.approval.dangerous
+                : t.chat.tool.approval.change}
             </p>
             {approval.summary ? (
               <p className="tc-callout-text">{acotar(approval.summary, 200)}</p>
             ) : (
               <p className="tc-callout-text">
-                Nada se ha escrito todavía: lo que ves es el plan exacto que se
-                enviará si confirmas.
+                {t.chat.tool.approval.planOnly}
               </p>
             )}
           </Callout>
 
-          <CommandList comandos={comandos} etiqueta="Comandos a ejecutar" />
+          <CommandList
+            comandos={comandos}
+            etiqueta={t.chat.tool.approval.commands}
+          />
 
           {expirada && (
             <Callout tono="error" icono={Clock}>
               <p className="tc-callout-title">
-                La solicitud caducó: pídele al agente que la repita para volver a
-                autorizarla.
+                {t.chat.tool.approval.expired}
               </p>
             </Callout>
           )}
@@ -587,7 +631,7 @@ function TarjetaConfirmacion({
               ) : (
                 <Rocket className="size-3" />
               )}
-              Confirmar y ejecutar
+              {t.chat.tool.approval.confirm}
             </Button>
             <Button
               type="button"
@@ -598,17 +642,19 @@ function TarjetaConfirmacion({
               className="cursor-pointer gap-1.5"
             >
               <X className="size-3" />
-              Cancelar
+              {t.common.cancel}
             </Button>
 
             {resolving && (
               <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
                 <LoaderCircle className="size-3 animate-spin" />
-                Registrando decisión…
+                {t.chat.tool.approval.registering}
               </span>
             )}
             {!canApprove && (
-              <span className="tc-note-spec">Requerido para tu rol · STAFF/ADMIN</span>
+              <span className="tc-note-spec">
+                {t.chat.tool.approval.roleRequired}
+              </span>
             )}
           </div>
         </div>
@@ -622,15 +668,26 @@ function TarjetaConfirmacion({
 function visualAprobacionResuelta(
   status: ApprovalRequest["status"],
   toolStatus: ToolExecution["status"],
+  t: ReturnType<typeof useT>,
 ): { nodoTono: TonoNodo; IconoNodo: LucideIcon; tag: string | null; tagTono?: "aviso" | "crit" | "ok" | "info" } {
   if (status === "rejected") return { nodoTono: "mudo", IconoNodo: Ban, tag: null };
   if (status === "expired")
-    return { nodoTono: "mudo", IconoNodo: Clock, tag: "Expirada", tagTono: "aviso" };
+    return {
+      nodoTono: "mudo",
+      IconoNodo: Clock,
+      tag: t.chat.tool.tags.expired,
+      tagTono: "aviso",
+    };
 
   if (toolStatus === "completed")
     return { nodoTono: "ok", IconoNodo: Check, tag: null };
   if (toolStatus === "error")
-    return { nodoTono: "crit", IconoNodo: XCircle, tag: "Error", tagTono: "crit" };
+    return {
+      nodoTono: "crit",
+      IconoNodo: XCircle,
+      tag: t.chat.tool.tags.error,
+      tagTono: "crit",
+    };
   if (toolStatus === "rejected")
     return { nodoTono: "mudo", IconoNodo: Ban, tag: null };
   return { nodoTono: "run", IconoNodo: LoaderCircle, tag: null };
@@ -649,9 +706,11 @@ function TarjetaAprobacionResuelta({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   const visual = visualAprobacionResuelta(
     approval.status,
     tool.status,
+    t,
   );
   const comandos =
     approval.commands.length > 0 ? approval.commands : extraerComandos(tool);
@@ -661,18 +720,18 @@ function TarjetaAprobacionResuelta({
       nodoTono={visual.nodoTono}
       IconoNodo={visual.IconoNodo}
       nombre={etiquetaHerramienta(tool.name)}
-      sub={subParaPaso(salida, comandos, approval.deviceName)}
+      sub={subParaPaso(salida, comandos, t, approval.deviceName)}
       tag={visual.tag}
       tagTono={visual.tagTono}
-      meta={metaParaPaso(salida)}
+      meta={metaParaPaso(salida, t)}
     >
       {comandos.length > 0 && (
         <CommandList
           comandos={comandos}
           etiqueta={
             approval.status === "approved"
-              ? "Comandos autorizados"
-              : "Comandos propuestos"
+              ? t.chat.tool.approval.approved
+              : t.chat.tool.approval.proposed
           }
         />
       )}
@@ -699,15 +758,16 @@ function TarjetaError({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
 
   const reintentarConexion = () => {
     const estado = useTerminalStore.getState();
     if (!estado.lastConnectPayload) {
-      toast.info("Selecciona un dispositivo y conéctalo en la terminal");
+      toast.info(t.chat.tool.error.selectDevice);
       return;
     }
     estado.requestReconnect();
-    toast.success("Reconectando la terminal…");
+    toast.success(t.chat.tool.error.reconnecting);
   };
   const comandos = extraerComandos(tool);
   const esIncidencia = salida !== null && SALIDAS_ESTRUCTURADAS.includes(salida.kind);
@@ -717,10 +777,12 @@ function TarjetaError({
       nodoTono="crit"
       IconoNodo={XCircle}
       nombre={etiquetaHerramienta(tool.name)}
-      sub={subParaPaso(salida, comandos)}
-      tag={esIncidencia ? "Incidencia del equipo" : "Error"}
+      sub={subParaPaso(salida, comandos, t)}
+      tag={
+        esIncidencia ? t.chat.tool.tags.incident : t.chat.tool.tags.error
+      }
       tagTono="crit"
-      meta={metaParaPaso(salida)}
+      meta={metaParaPaso(salida, t)}
       accionRapida={
         info.reintentable ? (
           <Button
@@ -731,7 +793,7 @@ function TarjetaError({
             className="shrink-0 cursor-pointer gap-1.5"
           >
             <RotateCcw className="size-3" />
-            Reconectar
+            {t.chat.tool.error.reconnect}
           </Button>
         ) : undefined
       }
@@ -768,6 +830,7 @@ function TarjetaTerminalRequerida({
   const activeSessionDevice = useTerminalStore((s) => s.activeSessionDevice);
   const router = useRouter();
   const pathname = usePathname();
+  const t = useT();
 
   const conectar = () => {
     const store = useTerminalStore.getState();
@@ -775,11 +838,9 @@ function TarjetaTerminalRequerida({
     if (deviceId) {
       store.setLastConnectPayload({ providerId: deviceId });
       store.requestReconnect();
-      toast.success("Conectando la terminal…");
+      toast.success(t.chat.tool.terminalRequired.connecting);
     } else {
-      toast.info(
-        "Selecciona un dispositivo en el selector de la terminal y pulsa Conectar",
-      );
+      toast.info(t.chat.tool.terminalRequired.selectDevice);
     }
 
     if (pathname !== "/dashboard/terminal") {
@@ -791,8 +852,8 @@ function TarjetaTerminalRequerida({
     <Paso
       nodoTono="aviso"
       IconoNodo={PlugZap}
-      nombre="Consola no conectada"
-      sub={acotar(mensaje, 80) || "la herramienta pidió sesión de terminal y no había ninguna"}
+      nombre={t.chat.tool.terminalRequired.title}
+      sub={acotar(mensaje, 80) || t.chat.tool.terminalRequired.sub}
       accionRapida={
         <Button
           type="button"
@@ -802,13 +863,17 @@ function TarjetaTerminalRequerida({
           className="shrink-0 cursor-pointer gap-1.5 border-warning/40 bg-warning/10 text-warning hover:bg-warning/15 hover:text-warning"
         >
           <PlugZap className="size-3" />
-          Conectar {activeSessionDevice ?? "dispositivo"}
+          {interp(t.chat.tool.terminalRequired.connect, {
+            device:
+              activeSessionDevice ?? t.chat.tool.terminalRequired.deviceFallback,
+          })}
         </Button>
       }
     >
       <LineaSecundaria>
-        {etiquetaHerramienta(tool.name)} pidió una sesión de terminal y no hay
-        ninguna conectada.
+        {interp(t.chat.tool.terminalRequired.body, {
+          tool: etiquetaHerramienta(tool.name),
+        })}
       </LineaSecundaria>
 
       <DetallesTecnicos tool={tool} expanded={expanded} onToggle={onToggle} />
@@ -830,21 +895,31 @@ export function buscarSolicitudApertura(
   );
 }
 
-export function describirDestinoConsola(payload: TerminalOpenPayload): string {
+export function describirDestinoConsola(
+  payload: TerminalOpenPayload,
+  t: ReturnType<typeof useT>,
+): string {
   const protocolo = payload.type ? `${payload.type} · ` : "";
   if (payload.serialPort) {
-    return `${protocolo}${payload.serialPort} @ ${payload.baudRate ?? 9600} baudios`;
+    return `${protocolo}${payload.serialPort} @ ${interp(
+      t.chat.tool.consoleOpen.baudios,
+      { count: payload.baudRate ?? 9600 },
+    )}`;
   }
   if (payload.host) {
     return `${protocolo}${payload.port ? `${payload.host}:${payload.port}` : payload.host}`;
   }
   if (payload.deviceName) {
-    return `${protocolo}nodo ${payload.deviceName}`;
+    return `${protocolo}${interp(t.chat.tool.consoleOpen.node, {
+      name: payload.deviceName,
+    })}`;
   }
   if (payload.providerId) {
-    return `${protocolo}dispositivo seleccionado`;
+    return `${protocolo}${t.chat.tool.consoleOpen.selectedDevice}`;
   }
-  return protocolo ? protocolo.replace(/ · $/, "") : "consola remota";
+  return protocolo
+    ? protocolo.replace(/ · $/, "")
+    : t.chat.tool.consoleOpen.remoteConsole;
 }
 
 function TarjetaAperturaConsola({
@@ -863,6 +938,7 @@ function TarjetaAperturaConsola({
   const [abriendo, setAbriendo] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const ocupado = abriendo || cancelando;
+  const t = useT();
 
   const abrir = () => {
     setAbriendo(true);
@@ -875,7 +951,7 @@ function TarjetaAperturaConsola({
       accepted: false,
       error: "Cancelado por el usuario",
     });
-    if (!result.success) toast.error(result.message);
+    if (!result.success) notifyError(result.message);
     chat.resolveTerminalOpenLocal(request.requestId, false);
     setCancelando(false);
   };
@@ -884,8 +960,8 @@ function TarjetaAperturaConsola({
     <Paso
       nodoTono="info"
       IconoNodo={MonitorCog}
-      nombre="El agente pide abrir una consola"
-      sub={acotar(describirDestinoConsola(request.payload), 80)}
+      nombre={t.chat.tool.consoleOpen.title}
+      sub={acotar(describirDestinoConsola(request.payload, t), 80)}
       extra={
         <span className="tc-chip">
           {request.toolName === "openGns3Console" ? "GNS3" : "Terminal"}
@@ -909,7 +985,7 @@ function TarjetaAperturaConsola({
           ) : (
             <PlugZap className="size-3" />
           )}
-          Abrir consola
+          {t.chat.tool.consoleOpen.open}
         </Button>
         <Button
           type="button"
@@ -924,12 +1000,12 @@ function TarjetaAperturaConsola({
           ) : (
             <X className="size-3" />
           )}
-          Cancelar
+          {t.common.cancel}
         </Button>
         {abriendo && (
           <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
             <LoaderCircle className="size-3 animate-spin" />
-            Abriendo consola…
+            {t.chat.tool.consoleOpen.opening}
           </span>
         )}
       </div>
@@ -950,8 +1026,8 @@ function TarjetaRechazada({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const motivo =
-    texto || "La acción se canceló y no llegó a ejecutarse.";
+  const t = useT();
+  const motivo = texto || t.chat.tool.rejected.fallback;
   return (
     <Paso
       nodoTono="mudo"
@@ -967,17 +1043,30 @@ function TarjetaRechazada({
   );
 }
 
-const ETIQUETA_COMANDOS: Record<ToolExecution["status"], string> = {
-  running: "Comandos en curso",
-  waiting_approval: "Comandos propuestos",
-  completed: "Comandos ejecutados",
-  rejected: "Comandos cancelados",
-  error: "Comandos intentados",
-};
+function etiquetaComandos(
+  status: ToolExecution["status"],
+  t: ReturnType<typeof useT>,
+): string {
+  switch (status) {
+    case "running":
+      return t.chat.tool.commands.running;
+    case "waiting_approval":
+      return t.chat.tool.commands.waiting;
+    case "completed":
+      return t.chat.tool.commands.completed;
+    case "rejected":
+      return t.chat.tool.commands.rejected;
+    case "error":
+      return t.chat.tool.commands.error;
+    default:
+      return t.chat.tool.commands.fallback;
+  }
+}
 
 function visualCompacta(
   status: ToolExecution["status"],
   salida: SalidaParseada | null,
+  t: ReturnType<typeof useT>,
 ): {
   nodoTono: TonoNodo;
   IconoNodo: LucideIcon;
@@ -987,7 +1076,12 @@ function visualCompacta(
   if (status === "running")
     return { nodoTono: "run", IconoNodo: LoaderCircle, tag: null };
   if (status === "waiting_approval")
-    return { nodoTono: "aviso", IconoNodo: Clock, tag: "Por aprobar", tagTono: "aviso" };
+    return {
+      nodoTono: "aviso",
+      IconoNodo: Clock,
+      tag: t.chat.tool.tags.pendingApproval,
+      tagTono: "aviso",
+    };
   if (status === "rejected")
     return { nodoTono: "mudo", IconoNodo: Ban, tag: null };
   if (status === "error") {
@@ -996,7 +1090,7 @@ function visualCompacta(
     return {
       nodoTono: "crit",
       IconoNodo: XCircle,
-      tag: incidencia ? "Incidencia del equipo" : "Error",
+      tag: incidencia ? t.chat.tool.tags.incident : t.chat.tool.tags.error,
       tagTono: "crit",
     };
   }
@@ -1005,33 +1099,78 @@ function visualCompacta(
     const situacion = situacionConfiguracion(salida.ciclo);
     switch (situacion.situacion) {
       case "plan":
-        return { nodoTono: "info", IconoNodo: Terminal, tag: "Simulación", tagTono: "info" };
+        return {
+          nodoTono: "info",
+          IconoNodo: Terminal,
+          tag: t.chat.tool.tags.simulation,
+          tagTono: "info",
+        };
       case "dialogo_pendiente":
-        return { nodoTono: "aviso", IconoNodo: AlertTriangle, tag: "Diálogo pendiente", tagTono: "aviso" };
+        return {
+          nodoTono: "aviso",
+          IconoNodo: AlertTriangle,
+          tag: t.chat.tool.tags.pendingDialog,
+          tagTono: "aviso",
+        };
       case "aplicada_sin_verificar":
-        return { nodoTono: "aviso", IconoNodo: AlertTriangle, tag: "Sin verificar", tagTono: "aviso" };
+        return {
+          nodoTono: "aviso",
+          IconoNodo: AlertTriangle,
+          tag: t.chat.tool.tags.unverified,
+          tagTono: "aviso",
+        };
       case "aplicada_verificada":
         return { nodoTono: "ok", IconoNodo: Check, tag: null };
       case "aplicada":
-        return { nodoTono: "ok", IconoNodo: Check, tag: "Sin verificar", tagTono: "aviso" };
+        return {
+          nodoTono: "ok",
+          IconoNodo: Check,
+          tag: t.chat.tool.tags.unverified,
+          tagTono: "aviso",
+        };
       case "abortada":
-        return { nodoTono: "crit", IconoNodo: XCircle, tag: "Incidencia del equipo", tagTono: "crit" };
+        return {
+          nodoTono: "crit",
+          IconoNodo: XCircle,
+          tag: t.chat.tool.tags.incident,
+          tagTono: "crit",
+        };
       default:
         return { nodoTono: "mudo", IconoNodo: Ban, tag: null };
     }
   }
   if (salida?.kind === "diagnostico") {
     if (salida.diag.codigo === "NO_COMMANDS_EXECUTED")
-      return { nodoTono: "crit", IconoNodo: XCircle, tag: "Sin ejecución", tagTono: "crit" };
+      return {
+        nodoTono: "crit",
+        IconoNodo: XCircle,
+        tag: t.chat.tool.tags.notExecuted,
+        tagTono: "crit",
+      };
     if (salida.diag.codigo === "NO_OUTPUT")
-      return { nodoTono: "aviso", IconoNodo: AlertTriangle, tag: "Sin salida", tagTono: "aviso" };
+      return {
+        nodoTono: "aviso",
+        IconoNodo: AlertTriangle,
+        tag: t.chat.tool.tags.noOutput,
+        tagTono: "aviso",
+      };
     if (salida.diag.sinPrompt)
-      return { nodoTono: "aviso", IconoNodo: AlertTriangle, tag: "Sin prompt", tagTono: "aviso" };
+      return {
+        nodoTono: "aviso",
+        IconoNodo: AlertTriangle,
+        tag: t.chat.tool.tags.noPrompt,
+        tagTono: "aviso",
+      };
     return { nodoTono: "ok", IconoNodo: Check, tag: null };
   }
   if (salida?.kind === "terminal") {
     if (salida.estado.sinPrompt)
-      return { nodoTono: "aviso", IconoNodo: AlertTriangle, tag: "Sin prompt", tagTono: "aviso" };
+      return {
+        nodoTono: "aviso",
+        IconoNodo: AlertTriangle,
+        tag: t.chat.tool.tags.noPrompt,
+        tagTono: "aviso",
+      };
     return {
       nodoTono: salida.estado.viva ? "ok" : "crit",
       IconoNodo: salida.estado.viva ? Check : XCircle,
@@ -1054,30 +1193,31 @@ function TarjetaCompacta({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const visual = visualCompacta(tool.status, salida);
+  const t = useT();
+  const visual = visualCompacta(tool.status, salida, t);
 
   return (
     <Paso
       nodoTono={visual.nodoTono}
       IconoNodo={visual.IconoNodo}
       nombre={etiquetaHerramienta(tool.name)}
-      sub={subParaPaso(salida, comandos)}
+      sub={subParaPaso(salida, comandos, t)}
       tag={visual.tag}
       tagTono={visual.tagTono}
-      meta={metaParaPaso(salida)}
+      meta={metaParaPaso(salida, t)}
       defaultAbierto={tool.status !== "completed"}
     >
       {comandos.length > 0 && (
         <CommandList
           comandos={comandos}
-          etiqueta={ETIQUETA_COMANDOS[tool.status] || "Comandos"}
+          etiqueta={etiquetaComandos(tool.status, t)}
         />
       )}
 
       {salida && <SalidaCard salida={salida} />}
 
       {!salida && tool.status === "running" && (
-        <LineaSecundaria>Ejecutando la herramienta…</LineaSecundaria>
+        <LineaSecundaria>{t.chat.tool.running}</LineaSecundaria>
       )}
 
       <DetallesTecnicos tool={tool} expanded={expanded} onToggle={onToggle} />
@@ -1095,13 +1235,16 @@ interface AnalisisTool {
 
 const cacheAnalisis = new WeakMap<ToolExecution, AnalisisTool>();
 
-function analizar(tool: ToolExecution): AnalisisTool {
+function analizar(
+  tool: ToolExecution,
+  t: ReturnType<typeof useT>,
+): AnalisisTool {
   const cached = cacheAnalisis.get(tool);
   if (cached) return cached;
 
   const analisis: AnalisisTool = {
-    salida: parseSalida(tool),
-    terminalRequerida: parseTerminalRequired(tool),
+    salida: parseSalida(tool, t),
+    terminalRequerida: parseTerminalRequired(tool, t),
     error: resumirError(tool.output),
     cancelacion: explicacionCancelacion(tool.output),
     comandos: extraerComandos(tool),
@@ -1129,9 +1272,10 @@ interface ToolCardInlineProps {
 function ToolCardInline({ tool, chat }: ToolCardInlineProps) {
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const t = useT();
 
   const { salida, terminalRequerida, error, cancelacion, comandos } =
-    analizar(tool);
+    analizar(tool, t);
   const solicitudApertura = buscarSolicitudApertura(
     chat.terminalOpenRequests,
     tool.id,

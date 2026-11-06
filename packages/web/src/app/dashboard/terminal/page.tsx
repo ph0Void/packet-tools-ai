@@ -1,13 +1,17 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/action/SecureAction";
 import { TerminalWorkspace } from "@/component/terminal/TerminalWorkspace";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Terminal",
-  description:
-    " Acceso a la terminal de red para ejecutar comandos y scripts en dispositivos conectados",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.terminal.title}`,
+    description: t.dashboard.metadata.terminal.description,
+  };
+}
 
 export default async function PageTerminal() {
   const user = await getSessionUser();

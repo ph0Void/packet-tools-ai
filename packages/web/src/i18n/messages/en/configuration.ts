@@ -1,0 +1,133 @@
+const configuration = {
+  page: {
+    title: "Configuration",
+    description: "Sound preferences and system settings.",
+  },
+  sounds: {
+    title: "Sound preferences",
+    subtitle: "Interface sounds for key events. Stored in this browser only.",
+    enabled: "Enabled",
+    disabled: "Disabled",
+    masterAria: "Enable or disable sounds",
+    volume: "Volume",
+    preview: "Test",
+    previewAria: "Test {event} sound",
+    reset: "Reset to defaults",
+    footnote:
+      "Sounds are generated locally with the Web Audio API, with no audio files and no external libraries. Your preference is stored in this browser only.",
+    events: {
+      agentComplete: {
+        label: "Agent finished",
+        description: "When the assistant finishes its response in the chat.",
+      },
+      error: {
+        label: "Error",
+        description:
+          "When something fails: no connection, validation or a rejected action.",
+      },
+      create: {
+        label: "Create",
+        description:
+          "When creating devices, automations, skills, users and more.",
+      },
+      update: {
+        label: "Update",
+        description: "When saving changes to existing items.",
+      },
+      upload: {
+        label: "File upload",
+        description: "When uploading a document to the knowledge base.",
+      },
+    },
+  },
+  agentLogs: {
+    title: "Enable logs",
+    description: "Captures the agents' activity trace.",
+    saving: "Saving…",
+    enabled: "Enabled",
+    disabled: "Disabled",
+    aria: "Enable or disable the agent trace log",
+    error: "Could not change the trace logging setting.",
+  },
+  systemPrompt: {
+    title: "System Prompt",
+    description: "Global instructions the network agent receives on every session.",
+    label: "Prompt content",
+    placeholder: "You are a network expert assistant...",
+    hint: "Applies to the chat, terminal and topology agents.",
+    saving: "Saving...",
+    save: "Save Prompt",
+  },
+  models: {
+    title: "Artificial Intelligence Providers",
+    description:
+      "Compatible with OpenAI, Google Gemini, Anthropic, Ollama, LM Studio and others.",
+    add: "Add",
+    columnName: "Name",
+    columnProvider: "Provider",
+    columnModel: "Model",
+    columnType: "Type",
+    columnUrl: "URL / Endpoint",
+    columnApiKey: "API Key",
+    columnStatus: "Status",
+    columnActions: "Actions",
+    loading: "Loading models...",
+    empty: "No AI models configured. Add a new one to get started.",
+    defaultCloud: "Default cloud",
+    toggleAria: "Enable or disable {name}",
+    editAria: "Edit {name}",
+    deleteAria: "Delete {name}",
+    newTitle: "New Model Provider",
+    editTitle: "Edit Model Provider",
+    fields: {
+      name: "Model name",
+      namePlaceholder: "e.g. deepseek-v4.1-flash, claude-haiku-5.5",
+      provider: "Provider",
+      typeModel: "Model type",
+      modelId: "Model ID",
+      modelIdPlaceholder:
+        "e.g. deepseek/deepseek-v4.1-flash, anthropic/claude-haiku-5.5",
+      baseUrl: "Base URL",
+      baseUrlPlaceholder: "e.g. http://127.0.0.1:1234/v1",
+      defaultEndpoint: "Default endpoint for {provider}:",
+      apiKey: "API Key",
+      apiKeyOptional: "(optional)",
+      apiKeyPlaceholderEdit:
+        "[configured] — leave empty to keep the current one",
+      apiKeyPlaceholderNew: "sk-...",
+      temperature: "Temperature",
+      permissions: "Permissions",
+      permissionsPlaceholder: "USER,STAFF,ADMIN (optional)",
+      active: "Active",
+      activeHint: "Inactive models are not assigned to the agent.",
+      activeAria: "Enable model",
+    },
+    providers: {
+      custom: "Custom (OpenAI-compatible)",
+    },
+    testing: "Testing…",
+    test: "Test Connection",
+    cancel: "Cancel",
+    save: "Save Configuration",
+    toasts: {
+      loadError: "Error loading the model providers.",
+      required: "Name and model are required.",
+      temperatureRange: "Temperature must be between 0 and 2.",
+      saved: "Model provider saved.",
+      saveError: "Error saving the model.",
+      activated: "Model enabled.",
+      deactivated: "Model disabled.",
+      toggleError: "Could not change the model status.",
+      deleteConfirm:
+        'Delete the model provider "{name}"? This action cannot be undone.',
+      deleted: "Model deleted successfully.",
+      deleteError: "Error deleting the model.",
+      modelNameRequired: "Set the exact model name before validating.",
+      apiKeyMissing: "This provider is missing its API Key.",
+      testOk: "Connection successful.",
+      testError: "The connection test could not be completed.",
+    },
+  },
+};
+
+export default configuration;

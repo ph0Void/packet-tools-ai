@@ -1,6 +1,6 @@
 export const formatDate = (
     value: string | Date | undefined | null,
-    locale: string = 'es-PE',
+    locale: string = 'es-ES',
     options: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
 ): string => {
     if (!value) return '—';

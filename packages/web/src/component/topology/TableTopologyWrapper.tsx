@@ -3,6 +3,10 @@
 import React, { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import TopologyTable from "./table/TopologyTable";
 import TopologyEditDialog from "./TopologyEditDialog";
 import ConfirmDialog from "@/component/ui/ConfirmDialog";
@@ -29,6 +33,7 @@ export default function TableTopologyWrapper({
   pagination,
   canManage,
 }: TableTopologyWrapperProps) {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -50,7 +55,7 @@ export default function TableTopologyWrapper({
     try {
       const detail = await getTopologyByIdAction(topology.id);
       if (!detail.success || !detail.data) {
-        toast.error(detail.message || "No se pudo obtener la topología.");
+        notifyError(detail.message || t.topology.list.toasts.fetchFailed);
         return false;
       }
 
@@ -62,15 +67,16 @@ export default function TableTopologyWrapper({
       );
 
       if (!result.success) {
-        toast.error(result.message || "No se pudo guardar la topología.");
+        notifyError(result.message || t.topology.list.toasts.saveFailed);
         return false;
       }
 
-      toast.success(result.message || "Topología actualizada.");
+      toast.success(result.message || t.topology.list.toasts.updated);
+      playSound("update");
       startTransition(() => router.refresh());
       return true;
     } catch {
-      toast.error("Error al actualizar la topología.");
+      notifyError(t.topology.list.toasts.updateError);
       return false;
     }
   };
@@ -83,14 +89,14 @@ export default function TableTopologyWrapper({
       try {
         const result = await deleteTopologyAction(target.id);
         if (result.success) {
-          toast.success(result.message || "Topología eliminada.");
+          toast.success(result.message || t.topology.list.toasts.deleted);
           setDeletingTopology(null);
           router.refresh();
         } else {
-          toast.error(result.message || "No se pudo eliminar la topología.");
+          notifyError(result.message || t.topology.list.toasts.deleteFailed);
         }
       } catch {
-        toast.error("Error al procesar la eliminación.");
+        notifyError(t.topology.list.toasts.deleteError);
       }
     });
   };
@@ -115,9 +121,11 @@ export default function TableTopologyWrapper({
       <ConfirmDialog
         open={!!deletingTopology}
         onOpenChange={(open) => !open && setDeletingTopology(null)}
-        title={`Eliminar ${deletingTopology?.name ?? "topología"}`}
-        description="Se eliminará la topología junto con su diagrama. Esta acción no se puede deshacer."
-        confirmLabel="Eliminar"
+        title={interp(t.topology.list.deleteTitle, {
+          name: deletingTopology?.name ?? t.topology.list.deleteFallbackName,
+        })}
+        description={t.topology.list.deleteDescription}
+        confirmLabel={t.topology.list.deleteConfirm}
         destructive
         pending={isPending}
         onConfirm={handleConfirmDelete}

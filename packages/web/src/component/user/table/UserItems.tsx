@@ -3,6 +3,8 @@
 import { Edit2, Trash2, UserCheck } from "lucide-react";
 import { formatDate } from "@/utils/FormatDate";
 import { cn } from "@/lib/utils";
+import { interp } from "@/i18n/interp";
+import { useT, useLocale } from "@/hooks/useT";
 import type { UserTypes } from "@/types/User";
 
 interface UserItemsProps {
@@ -29,6 +31,9 @@ export default function UserItems({
   onEdit,
   onDelete,
 }: UserItemsProps) {
+  const t = useT();
+  const { locale } = useLocale();
+  const dateLocale = locale === "en" ? "en-US" : "es-ES";
   return (
     <tr className="hover:bg-muted/40 transition-colors bg-card">
       <td className="py-4 px-6 text-sm">
@@ -50,7 +55,7 @@ export default function UserItems({
       </td>
 
       <td className="py-4 px-6 text-sm text-muted-foreground whitespace-nowrap">
-        {formatDate(user.createAt)}
+        {formatDate(user.createAt, dateLocale)}
       </td>
 
       {canManage && (
@@ -59,16 +64,20 @@ export default function UserItems({
             <button
               onClick={() => onEdit(user)}
               className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-sky-500 hover:border-sky-500/30 transition-all cursor-pointer"
-              title="Editar operador"
-              aria-label={`Editar ${user.username}`}
+              title={t.users.list.actions.edit}
+              aria-label={interp(t.users.list.actions.editAria, {
+                name: user.username,
+              })}
             >
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => onDelete(user.id, user.username)}
               className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-rose-500 hover:border-rose-500/30 transition-all cursor-pointer"
-              title="Eliminar operador"
-              aria-label={`Eliminar ${user.username}`}
+              title={t.users.list.actions.delete}
+              aria-label={interp(t.users.list.actions.deleteAria, {
+                name: user.username,
+              })}
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

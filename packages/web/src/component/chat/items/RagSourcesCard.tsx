@@ -4,6 +4,8 @@ import { useState } from "react";
 import { BookMarked, Check, ChevronDown } from "lucide-react";
 import type { RagRetrievedEvent } from "@/hooks/useCiscoChat";
 import { cn } from "@/lib/utils";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 
 export function RagSourcesCard({
   rag,
@@ -13,6 +15,7 @@ export function RagSourcesCard({
   className?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const t = useT();
   if (!rag || rag.sources.length === 0) return null;
 
   return (
@@ -32,12 +35,22 @@ export function RagSourcesCard({
         >
           <BookMarked className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <span className="text-[12.5px] font-medium text-foreground">
-            Fuentes consultadas
+            {t.chat.rag.sources}
           </span>
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
-            {rag.sources.length} {rag.sources.length === 1 ? "fuente" : "fuentes"}
+            {interp(
+              rag.sources.length === 1
+                ? t.chat.rag.sourceOne
+                : t.chat.rag.sourceMany,
+              { count: rag.sources.length },
+            )}
             {rag.chunksUsed > 0
-              ? ` · ${rag.chunksUsed} ${rag.chunksUsed === 1 ? "extracto" : "extractos"}`
+              ? ` · ${interp(
+                  rag.chunksUsed === 1
+                    ? t.chat.rag.extractOne
+                    : t.chat.rag.extractMany,
+                  { count: rag.chunksUsed },
+                )}`
               : ""}
           </span>
           <ChevronDown

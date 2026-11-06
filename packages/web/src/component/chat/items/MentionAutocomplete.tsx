@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookOpen, Globe, ListTodo, Radio, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 import type { DeviceProvider } from "@/service/DeviceProviderService";
 
 export const SKILL_PREFIX = "skill:";
@@ -23,36 +24,40 @@ export interface MentionSkill {
   description: string | null;
 }
 
-export const MENCIONES_FIJAS: MentionItem[] = [
-  {
-    token: "rag",
-    label: "rag",
-    description: "Fuerza la búsqueda en la base de conocimiento",
-    icon: <BookOpen className="size-3.5" />,
-    group: "base",
-  },
-  {
-    token: "web",
-    label: "web",
-    description: "Fuerza una búsqueda en internet",
-    icon: <Globe className="size-3.5" />,
-    group: "base",
-  },
-  {
-    token: "skill:",
-    label: "skill:",
-    description: "Aplica una skill concreta (escribe el nombre)",
-    icon: <Sparkles className="size-3.5" />,
-    group: "base",
-  },
-  {
-    token: "plan",
-    label: "plan",
-    description: "Planifica sin ejecutar y te presenta opciones para elegir",
-    icon: <ListTodo className="size-3.5" />,
-    group: "base",
-  },
-];
+function mencionesFijas(
+  t: ReturnType<typeof useT>,
+): MentionItem[] {
+  return [
+    {
+      token: "rag",
+      label: "rag",
+      description: t.chat.mentions.rag,
+      icon: <BookOpen className="size-3.5" />,
+      group: "base",
+    },
+    {
+      token: "web",
+      label: "web",
+      description: t.chat.mentions.web,
+      icon: <Globe className="size-3.5" />,
+      group: "base",
+    },
+    {
+      token: "skill:",
+      label: "skill:",
+      description: t.chat.mentions.skill,
+      icon: <Sparkles className="size-3.5" />,
+      group: "base",
+    },
+    {
+      token: "plan",
+      label: "plan",
+      description: t.chat.mentions.plan,
+      icon: <ListTodo className="size-3.5" />,
+      group: "base",
+    },
+  ];
+}
 
 export function detectarMencia(
   valor: string,
@@ -91,7 +96,9 @@ export function useMentionCandidates(
   skills: MentionSkill[],
   query: string,
 ): MentionItem[] {
+  const t = useT();
   return useMemo(() => {
+    const fijas = mencionesFijas(t);
     const itemsSkills: MentionItem[] = skills.map((skill) => ({
       token: `${SKILL_PREFIX}${skill.slug}`,
       label: skill.slug,
@@ -105,7 +112,7 @@ export function useMentionCandidates(
       .map((d) => ({
         token: d.name,
         label: d.name,
-        description: `${d.protocol || "—"} · ${d.typeDevice || "dispositivo"}`,
+        description: `${d.protocol || "—"} · ${d.typeDevice || t.chat.mentions.device}`,
         icon: <Radio className="size-3.5" />,
         group: "dispositivo" as const,
       }));
@@ -113,10 +120,7 @@ export function useMentionCandidates(
     const q = query.trim().toLowerCase();
 
     if (!q) {
-      return [...MENCIONES_FIJAS, ...itemsSkills, ...itemsDispositivos].slice(
-        0,
-        8,
-      );
+      return [...fijas, ...itemsSkills, ...itemsDispositivos].slice(0, 8);
     }
 
     if (q === "skill" || q.startsWith(SKILL_PREFIX)) {
@@ -128,17 +132,11 @@ export function useMentionCandidates(
         .slice(0, 8);
     }
 
-    return [...MENCIONES_FIJAS, ...itemsDispositivos]
+    return [...fijas, ...itemsDispositivos]
       .filter((item) => item.label.toLowerCase().includes(q))
       .slice(0, 8);
-  }, [devices, skills, query]);
+  }, [devices, skills, query, t]);
 }
-
-const GRUPOS: Array<{ id: MentionItem["group"]; titulo: string }> = [
-  { id: "base", titulo: "Búsqueda" },
-  { id: "skill", titulo: "Skills" },
-  { id: "dispositivo", titulo: "Dispositivos" },
-];
 
 export function MentionList({
   abierto,
@@ -153,6 +151,13 @@ export function MentionList({
   onSelect: (item: MentionItem) => void;
   className?: string;
 }) {
+  const t = useT();
+  const grupos: Array<{ id: MentionItem["group"]; titulo: string }> = [
+    { id: "base", titulo: t.chat.mentions.groups.search },
+    { id: "skill", titulo: t.chat.mentions.groups.skills },
+    { id: "dispositivo", titulo: t.chat.mentions.groups.devices },
+  ];
+
   if (!abierto || items.length === 0) return null;
 
   return (
@@ -164,7 +169,7 @@ export function MentionList({
       role="listbox"
       onMouseDown={(e) => e.preventDefault()}
     >
-      {GRUPOS.map(({ id, titulo }) => {
+      {grupos.map(({ id, titulo }) => {
         const delGrupo = items
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => item.group === id);

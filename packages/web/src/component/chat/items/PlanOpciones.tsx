@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { OpcionesPlan, OpcionPlan } from "@/hooks/useCiscoChat";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 
 /**
  * Tarjeta de opciones del modo planificación (@plan).
@@ -21,12 +22,6 @@ import { cn } from "@/lib/utils";
  * `[plan:<id>]`), sin estado nuevo: por eso el componente recibe `respondidas` como prop
  * en vez de mirar el contexto (regla de las tarjetas: nunca `useChatContext()`).
  */
-
-const ETIQUETA_RIESGO: Record<OpcionPlan["risk"], string> = {
-  safe: "Sin cambios",
-  config: "Cambia configuración",
-  danger: "Impacto de servicio",
-};
 
 const CLASE_RIESGO: Record<OpcionPlan["risk"], string> = {
   safe: "text-success",
@@ -51,6 +46,12 @@ export function PlanOpciones({
   onEscribirPropia,
   className,
 }: PlanOpcionesProps) {
+  const t = useT();
+  const etiquetaRiesgo: Record<OpcionPlan["risk"], string> = {
+    safe: t.chat.plan.risk.safe,
+    config: t.chat.plan.risk.config,
+    danger: t.chat.plan.risk.danger,
+  };
   const [abierto, setAbierto] = useState(true);
   const [escribiendoId, setEscribiendoId] = useState<string | null>(null);
   const [textoPropio, setTextoPropio] = useState("");
@@ -76,7 +77,7 @@ export function PlanOpciones({
       >
         <ListChecks className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.105em] text-muted-foreground">
-          Opciones del plan
+          {t.chat.plan.title}
         </span>
         <span className="min-w-0 flex-1 truncate text-[12.5px] text-foreground">
           {opciones.planTitle}
@@ -129,7 +130,7 @@ export function PlanOpciones({
                       <span className="text-[13px] font-medium">{opcion.title}</span>
                       {recomendada && (
                         <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-px font-mono text-[9.5px] font-semibold uppercase tracking-wide text-primary">
-                          Recomendada
+                          {t.chat.plan.recommended}
                         </span>
                       )}
                       {elegida && (
@@ -141,7 +142,7 @@ export function PlanOpciones({
                           CLASE_RIESGO[opcion.risk],
                         )}
                       >
-                        {ETIQUETA_RIESGO[opcion.risk]}
+                        {etiquetaRiesgo[opcion.risk]}
                       </span>
                     </div>
 
@@ -158,7 +159,7 @@ export function PlanOpciones({
                     {opcion.commands && opcion.commands.length > 0 && (
                       <div className="mt-2 rounded-md border border-border/40 bg-background/60 p-2">
                         <p className="font-mono text-[9.5px] uppercase tracking-wide text-muted-foreground">
-                          Comandos que se ejecutarían
+                          {t.chat.plan.commands}
                         </p>
                         <ul className="mt-1 space-y-0.5">
                           {opcion.commands.map((comando, i) => (
@@ -180,7 +181,7 @@ export function PlanOpciones({
                         type="text"
                         value={textoPropio}
                         onChange={(e) => setTextoPropio(e.target.value)}
-                        placeholder="Ajusta la opción o escribe tu propia respuesta…"
+                        placeholder={t.chat.plan.customPlaceholder}
                         className="min-w-0 flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-[12px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
                         autoFocus
                         onKeyDown={(e) => {
@@ -201,7 +202,7 @@ export function PlanOpciones({
                         }}
                         className="shrink-0 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary disabled:opacity-40"
                       >
-                        Enviar
+                        {t.chat.plan.send}
                       </button>
                       <button
                         type="button"
@@ -211,7 +212,7 @@ export function PlanOpciones({
                         }}
                         className="shrink-0 rounded-md px-2 py-1 text-[11px] text-muted-foreground"
                       >
-                        Cancelar
+                        {t.common.cancel}
                       </button>
                     </div>
                   )}
@@ -222,7 +223,7 @@ export function PlanOpciones({
                       onClick={() => setEscribiendoId(opcion.id)}
                       className="mt-1 cursor-pointer px-1 text-[10.5px] text-muted-foreground/70 hover:text-foreground"
                     >
-                      o escribe tu propia respuesta
+                      {t.chat.plan.ownAnswer}
                     </button>
                   )}
                 </li>
@@ -232,7 +233,7 @@ export function PlanOpciones({
 
           {bloqueado && (
             <p className="px-4 pt-2 text-[11px] text-muted-foreground/70">
-              Opciones cerradas: ya respondiste a esta tarjeta.
+              {t.chat.plan.closed}
             </p>
           )}
         </div>

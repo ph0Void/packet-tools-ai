@@ -1,13 +1,18 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/action/SecureAction";
 import { getTopologies } from "@/service/TopologyService";
 import TableTopologyWrapper from "@/component/topology/TableTopologyWrapper";
 import type { TopologyRow } from "@/component/topology/types";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Topologías",
-  description: "Gestión de topologías de red",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.topology.title}`,
+    description: t.dashboard.metadata.topology.description,
+  };
+}
 
 interface PageProps {
   searchParams: Promise<{ page?: string; limit?: string }>;
@@ -16,7 +21,10 @@ interface PageProps {
 const DEFAULT_PAGE_SIZE = 10;
 
 export default async function TopologyPage({ searchParams }: PageProps) {
-  const user = await getSessionUser();
+  const [user, t] = await Promise.all([
+    getSessionUser(),
+    getServerDictionary(),
+  ]);
   if (!user) redirect("/auth");
 
   const params = await searchParams;
@@ -26,11 +34,11 @@ export default async function TopologyPage({ searchParams }: PageProps) {
   const result = await getTopologies();
   const allTopologies =
     result.success && result.data
-      ? result.data.map<TopologyRow>((t) => ({
-          id: t.id,
-          name: t.name,
-          description: t.description,
-          createdAt: t.createdAt,
+      ? result.data.map<TopologyRow>((topology) => ({
+          id: topology.id,
+          name: topology.name,
+          description: topology.description,
+          createdAt: topology.createdAt,
         }))
       : [];
 
@@ -43,11 +51,10 @@ export default async function TopologyPage({ searchParams }: PageProps) {
     <div className="space-y-4 text-foreground">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Gestión de Topologías
+          {t.dashboard.topology.title}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Información general de las topologías que se generan en la red. (en
-          desarrollo)
+          {t.dashboard.topology.description}
         </p>
       </div>
 

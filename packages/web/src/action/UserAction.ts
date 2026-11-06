@@ -8,6 +8,7 @@ import {
   updateUser,
   type AppUser,
 } from "@/service/UserService";
+import { getServerDictionary } from "@/i18n/server";
 import type { FormState } from "@/types/actions";
 
 export type FormUserState = FormState<AppUser[]>;
@@ -34,6 +35,8 @@ export async function registerUserAction(
   prevState: FormUserState,
   formData: FormData,
 ): Promise<FormUserState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.users;
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const roleRaw = String(formData.get("role") ?? "USER");
@@ -44,7 +47,7 @@ export async function registerUserAction(
     return {
       ...prevState,
       success: false,
-      message: "Usuario y contraseña son obligatorios.",
+      message: messages.credentialsRequired,
     };
   }
 
@@ -55,13 +58,15 @@ export async function registerUserAction(
   }
 
   revalidatePath("/dashboard/users");
-  return { success: true, message: result.message || "Usuario creado." };
+  return { success: true, message: result.message || messages.created };
 }
 
 export async function updateUserAction(
   prevState: FormUserState,
   formData: FormData,
 ): Promise<FormUserState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.users;
   const id = String(formData.get("id") ?? "");
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -73,8 +78,7 @@ export async function updateUserAction(
     return {
       ...prevState,
       success: false,
-      message:
-        "Error de consistencia de datos: Falta el ID del usuario.",
+      message: messages.idMissing,
     };
   }
 
@@ -89,10 +93,11 @@ export async function updateUserAction(
   }
 
   revalidatePath("/dashboard/users");
-  return { success: true, message: result.message || "Usuario actualizado." };
+  return { success: true, message: result.message || messages.updated };
 }
 
 export async function deleteUserAction(id: string): Promise<FormUserState> {
+  const t = await getServerDictionary();
   const result = await deleteUser(id);
 
   if (!result.success) {
@@ -100,5 +105,5 @@ export async function deleteUserAction(id: string): Promise<FormUserState> {
   }
 
   revalidatePath("/dashboard/users");
-  return { success: true, message: result.message || "Usuario eliminado." };
+  return { success: true, message: result.message || t.forms.users.deleted };
 }

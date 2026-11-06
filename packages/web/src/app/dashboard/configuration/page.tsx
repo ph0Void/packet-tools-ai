@@ -1,25 +1,35 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { getSessionUser } from "@/action/SecureAction";
 import { getConfig } from "@/service/ConfigService";
+import SoundSettingsCard from "@/component/configuration/SoundSettingsCard";
 import SystemPromptCard from "@/component/configuration/SystemPromptCard";
 import ModelProvidersManager from "@/component/configuration/ModelProvidersManager";
 import AgentLogsCard from "@/component/configuration/AgentLogsCard";
 import { Settings } from "lucide-react";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Configuración  ",
-  description: "Prompt del sistema y gestión de proveedores de modelos IA",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.configuration.title}`,
+    description: t.dashboard.metadata.configuration.description,
+  };
+}
 
 export default async function PageConfig() {
-  const user = await getSessionUser();
-  if (user?.role !== "ADMIN") redirect("/dashboard");
+  const [user, t] = await Promise.all([
+    getSessionUser(),
+    getServerDictionary(),
+  ]);
 
-  const result = await getConfig();
+  const isAdmin = user?.role === "ADMIN";
+
+  // getConfig está restringido a ADMIN en el backend: el resto de roles no debe llamarlo.
+  const result = isAdmin ? await getConfig() : null;
   const initialPrompt =
-    result.success && result.data ? (result.data.systemPrompt ?? "") : "";
+    result?.success && result.data ? (result.data.systemPrompt ?? "") : "";
 
-  const agentLogsEnabled = result.data?.agentLogsEnabled ?? true;
+  const agentLogsEnabled = result?.data?.agentLogsEnabled ?? true;
 
   return (
     <div className="space-y-6 text-foreground p-1">
@@ -27,17 +37,23 @@ export default async function PageConfig() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Settings className="h-5 w-5 text-primary" />
-            Configuración
+            {t.configuration.page.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Prompt del sistema y gestión de proveedores de modelos IA
+            {t.configuration.page.description}
           </p>
         </div>
       </div>
 
-      <AgentLogsCard initialEnabled={agentLogsEnabled} />
-      <ModelProvidersManager />
-      <SystemPromptCard initialPrompt={initialPrompt} />
+      <SoundSettingsCard />
+
+      {isAdmin && (
+        <>
+          <AgentLogsCard initialEnabled={agentLogsEnabled} />
+          <ModelProvidersManager />
+          <SystemPromptCard initialPrompt={initialPrompt} />
+        </>
+      )}
     </div>
   );
 }

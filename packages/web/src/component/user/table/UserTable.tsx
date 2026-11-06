@@ -1,6 +1,8 @@
 "use client";
 
 import UserItems from "./UserItems";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import type { UserTypes } from "@/types/User";
 
 interface UserTableProps {
@@ -25,6 +27,7 @@ export default function UserTable({
   onDeleteUser,
   paginationData,
 }: UserTableProps) {
+  const t = useT();
   const { currentPage, totalPages, totalItems } = paginationData;
 
   return (
@@ -33,11 +36,13 @@ export default function UserTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-muted-foreground uppercase text-xs font-semibold tracking-wider">
-              <th className="py-3.5 px-6">Usuario</th>
-              <th className="py-3.5 px-6">Rol</th>
-              <th className="py-3.5 px-6">Fecha de registro</th>
+              <th className="py-3.5 px-6">{t.users.list.table.user}</th>
+              <th className="py-3.5 px-6">{t.users.list.table.role}</th>
+              <th className="py-3.5 px-6">{t.users.list.table.createdAt}</th>
               {canManage && (
-                <th className="py-3.5 px-6 text-right">Acciones</th>
+                <th className="py-3.5 px-6 text-right">
+                  {t.users.list.table.actions}
+                </th>
               )}
             </tr>
           </thead>
@@ -58,7 +63,7 @@ export default function UserTable({
                   colSpan={canManage ? 4 : 3}
                   className="py-8 text-center text-sm text-muted-foreground bg-card"
                 >
-                  No se encontraron operadores disponibles.
+                  {t.users.list.table.empty}
                 </td>
               </tr>
             )}
@@ -68,8 +73,10 @@ export default function UserTable({
 
       <div className="flex items-center justify-between pt-2 px-1">
         <p className="text-xs text-muted-foreground">
-          Mostrando <span className="font-medium">{users.length}</span> de{" "}
-          <span className="font-medium">{totalItems}</span> usuarios
+          {interp(t.users.list.table.showing, {
+            count: users.length,
+            total: totalItems,
+          })}
         </p>
 
         <div className="flex space-x-2">
@@ -78,11 +85,14 @@ export default function UserTable({
             disabled={currentPage <= 1}
             className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
-            Anterior
+            {t.users.list.table.previous}
           </button>
 
           <span className="inline-flex items-center justify-center px-3 text-xs text-muted-foreground">
-            Pág. {currentPage} de {totalPages}
+            {interp(t.users.list.table.page, {
+              page: currentPage,
+              total: totalPages,
+            })}
           </span>
 
           <button
@@ -90,7 +100,7 @@ export default function UserTable({
             disabled={currentPage >= totalPages}
             className="px-3 py-1.5 rounded-md text-xs font-medium border border-border bg-card text-foreground transition-all hover:bg-muted disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
-            Siguiente
+            {t.users.list.table.next}
           </button>
         </div>
       </div>

@@ -10,7 +10,9 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 
 export function SubTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-sm font-semibold text-foreground">{children}</h3>;
@@ -69,14 +71,15 @@ export function FieldTable({
 }: {
   rows: { label: string; help: React.ReactNode; example?: string }[];
 }) {
+  const t = useT().manual.primitives;
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
           <tr>
-            <th className="p-3">Campo</th>
-            <th className="p-3">Descripción</th>
-            <th className="p-3">Ejemplo</th>
+            <th className="p-3">{t.field}</th>
+            <th className="p-3">{t.description}</th>
+            <th className="p-3">{t.example}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -193,15 +196,16 @@ export function CodeBlock({
   label?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const t = useT().manual.primitives;
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
-      toast.success("Copiado al portapapeles.");
+      toast.success(t.copied);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      toast.error("No se pudo copiar al portapapeles.");
+      notifyError(t.copyError);
     }
   };
 
@@ -214,7 +218,7 @@ export function CodeBlock({
         <button
           type="button"
           onClick={() => void handleCopy()}
-          aria-label="Copiar al portapapeles"
+          aria-label={t.copyAria}
           className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground"
         >
           {copied ? (

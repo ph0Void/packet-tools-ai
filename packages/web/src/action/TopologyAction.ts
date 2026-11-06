@@ -8,6 +8,7 @@ import {
   saveTopology,
   type Topology,
 } from "@/service/TopologyService";
+import { getServerDictionary } from "@/i18n/server";
 import type { FormState } from "@/types/actions";
 
 export type FormTopologyState = FormState<Topology | null>;
@@ -24,9 +25,12 @@ export async function saveTopologyAction(
   topologyJson: string,
   id?: string,
 ): Promise<FormTopologyState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.topology;
+
   try {
     if (!name?.trim()) {
-      return { success: false, message: "El nombre de la topología es obligatorio." };
+      return { success: false, message: messages.nameRequired };
     }
 
     const result = await saveTopology({
@@ -43,14 +47,14 @@ export async function saveTopologyAction(
     revalidatePath("/dashboard/topology");
     return {
       success: true,
-      message: result.message || "Topología guardada correctamente.",
+      message: result.message || messages.saved,
       data: result.data,
     };
   } catch (error) {
     console.error("Error al guardar la topología:", error);
     return {
       success: false,
-      message: "Error al procesar la solicitud en el servidor.",
+      message: messages.requestError,
     };
   }
 }
@@ -59,13 +63,16 @@ export async function getAllTopologiesAction(
   page: number = 1,
   limit: number = 10,
 ): Promise<FormTopologyListState> {
+  const t = await getServerDictionary();
+  const messages = t.forms.topology;
+
   try {
     const result = await getTopologies();
 
     if (!result.success || !result.data) {
       return {
         success: false,
-        message: result.message || "No autorizado.",
+        message: result.message || t.forms.notAuthorized,
         data: [],
         page,
         limit,
@@ -87,7 +94,7 @@ export async function getAllTopologiesAction(
     console.error("Error al obtener las topologías:", error);
     return {
       success: false,
-      message: "Error al obtener topologías.",
+      message: messages.listFetchError,
       data: [],
       page,
       limit,
@@ -99,6 +106,8 @@ export async function getAllTopologiesAction(
 export async function getTopologyByIdAction(
   id: string,
 ): Promise<FormTopologyState> {
+  const t = await getServerDictionary();
+
   try {
     const result = await getTopology(id);
 
@@ -119,7 +128,7 @@ export async function getTopologyByIdAction(
     console.error("Error al obtener topología:", error);
     return {
       success: false,
-      message: "Error al obtener la topología.",
+      message: t.forms.topology.fetchError,
       data: null,
     };
   }
@@ -128,6 +137,8 @@ export async function getTopologyByIdAction(
 export async function deleteTopologyAction(
   id: string,
 ): Promise<FormTopologyState> {
+  const t = await getServerDictionary();
+
   try {
     const result = await deleteTopology(id);
 
@@ -136,12 +147,15 @@ export async function deleteTopologyAction(
     }
 
     revalidatePath("/dashboard/topology");
-    return { success: true, message: result.message || "Topología eliminada." };
+    return {
+      success: true,
+      message: result.message || t.forms.topology.deleted,
+    };
   } catch (error) {
     console.error("Error al eliminar topología:", error);
     return {
       success: false,
-      message: "Error al eliminar la topología.",
+      message: t.forms.topology.deleteError,
     };
   }
 }

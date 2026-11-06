@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { playSound } from "@/lib/sounds/playSound";
 import {
   createSkillAction,
   deleteSkillAction,
@@ -19,6 +21,8 @@ import {
   type FormSkillState,
 } from "@/action/SkillAction";
 import type { Skill } from "@/service/SkillService";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,13 +37,12 @@ interface SkillsManagerProps {
 
 const ESTADO_INICIAL: FormSkillState<Skill> = { success: false, message: "" };
 
-const CONTENIDO_PLANTILLA = "# Cuándo usarla\n\n# Pasos\n\n1. ";
-
 export default function SkillsManager({
   initialSkills,
   canEdit,
   canDelete,
 }: SkillsManagerProps) {
+  const t = useT();
   const skills = initialSkills;
 
   const [formId, setFormId] = useState<string | null | undefined>(undefined);
@@ -51,9 +54,10 @@ export default function SkillsManager({
       const res = await createSkillAction(prev, formData);
       if (res.success) {
         toast.success(res.message);
+        playSound("create");
         setFormId(undefined);
       } else {
-        toast.error(res.message || "No se pudo crear la skill.");
+        notifyError(res.message || t.skills.toasts.createFailed);
       }
       return res;
     },
@@ -65,9 +69,10 @@ export default function SkillsManager({
       const res = await updateSkillAction(prev, formData);
       if (res.success) {
         toast.success(res.message);
+        playSound("update");
         setFormId(undefined);
       } else {
-        toast.error(res.message || "No se pudo actualizar la skill.");
+        notifyError(res.message || t.skills.toasts.updateFailed);
       }
       return res;
     },
@@ -102,7 +107,7 @@ export default function SkillsManager({
 
   const eliminar = async (skill: Skill) => {
     const confirmado = window.confirm(
-      `¿Eliminar la skill «${skill.title}»? No se puede deshacer y el agente dejará de poder usarla.`,
+      interp(t.skills.toasts.deleteConfirm, { title: skill.title }),
     );
     if (!confirmado) return;
 
@@ -110,7 +115,7 @@ export default function SkillsManager({
     try {
       const res = await deleteSkillAction(skill.id);
       if (res.success) toast.success(res.message);
-      else toast.error(res.message || "No se pudo eliminar la skill.");
+      else notifyError(res.message || t.skills.toasts.deleteFailed);
     } finally {
       setBorrando(null);
     }
@@ -120,9 +125,10 @@ export default function SkillsManager({
     setAlternando(skill.id);
     try {
       const res = await toggleSkillAction(skill.id, !skill.enabled);
-      if (res.success) toast.success(res.message);
-      else
-        toast.error(res.message || "No se pudo cambiar el estado de la skill.");
+      if (res.success) {
+        toast.success(res.message);
+        playSound("update");
+      } else notifyError(res.message || t.skills.toasts.toggleFailed);
     } finally {
       setAlternando(null);
     }
@@ -134,13 +140,12 @@ export default function SkillsManager({
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <BookOpen className="h-5 w-5 text-primary" />
-            Skills
+            {t.skills.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Playbooks que el agente carga bajo demanda. El prompt sólo recibe el
-            identificador y la descripción; el procedimiento se pide cuando hace
-            falta, y el usuario puede invocarlo con{" "}
-            <code className="font-mono text-xs">@skill:&lt;id&gt;</code>.
+            {t.skills.subtitlePrefix}{" "}
+            <code className="font-mono text-xs">@skill:&lt;id&gt;</code>
+            {t.skills.subtitleSuffix}
           </p>
         </div>
 
@@ -150,7 +155,7 @@ export default function SkillsManager({
             className="gap-2 self-start sm:self-auto shrink-0"
           >
             <Plus className="h-4 w-4" />
-            Nueva skill
+            {t.skills.new}
           </Button>
         )}
       </div>
@@ -162,7 +167,7 @@ export default function SkillsManager({
         >
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">
-              {formId ? "Editar skill" : "Nueva skill"}
+              {formId ? t.skills.form.editTitle : t.skills.form.createTitle}
             </h2>
             <Button
               type="button"
@@ -170,7 +175,7 @@ export default function SkillsManager({
               size="icon-xs"
               onClick={() => setFormId(undefined)}
               className="cursor-pointer"
-              aria-label="Cerrar"
+              aria-label={t.skills.actions.close}
             >
               <X className="size-3.5" />
             </Button>
@@ -190,14 +195,14 @@ export default function SkillsManager({
                 htmlFor="skill-title"
                 className="text-xs font-medium text-muted-foreground"
               >
-                Título
+                {t.skills.form.titleLabel}
               </label>
               <Input
                 id="skill-title"
                 name="title"
                 defaultValue={skillEnEdicion?.title ?? ""}
                 key={`titulo-${formId ?? "nueva"}`}
-                placeholder="Configurar OSPF área 0"
+                placeholder={t.skills.form.titlePlaceholder}
                 className="text-sm"
               />
             </div>
@@ -206,14 +211,14 @@ export default function SkillsManager({
                 htmlFor="skill-description"
                 className="text-xs font-medium text-muted-foreground"
               >
-                Cuándo usarla
+                {t.skills.form.whenToUse}
               </label>
               <Input
                 id="skill-description"
                 name="description"
                 defaultValue={skillEnEdicion?.description ?? ""}
                 key={`descripcion-${formId ?? "nueva"}`}
-                placeholder="Una frase: para qué sirve y cuándo aplicarla"
+                placeholder={t.skills.form.whenToUsePlaceholder}
                 className="text-sm"
               />
             </div>
@@ -221,10 +226,11 @@ export default function SkillsManager({
 
           {formId && (
             <p className="text-[11px] text-muted-foreground">
-              Identificador:{" "}
-              <code className="font-mono">{skillEnEdicion?.slug}</code>. No
-              cambia al renombrar, para que las menciones{" "}
-              <code className="font-mono">@skill:</code> sigan resolviendo.
+              {t.skills.form.identifier}{" "}
+              <code className="font-mono">{skillEnEdicion?.slug}</code>.{" "}
+              {t.skills.form.identifierHintStart}{" "}
+              <code className="font-mono">@skill:</code>{" "}
+              {t.skills.form.identifierHintEnd}
             </p>
           )}
 
@@ -233,19 +239,20 @@ export default function SkillsManager({
               htmlFor="skill-content"
               className="text-xs font-medium text-muted-foreground"
             >
-              Contenido (Markdown)
+              {t.skills.form.content}
             </label>
             <Textarea
               id="skill-content"
               name="content"
-              defaultValue={skillEnEdicion?.content ?? CONTENIDO_PLANTILLA}
+              defaultValue={
+                skillEnEdicion?.content ?? t.skills.form.contentTemplate
+              }
               key={`contenido-${formId ?? "nueva"}`}
               rows={14}
               className="font-mono text-xs"
             />
             <p className="text-[11px] text-muted-foreground">
-              El agente recibe sólo el título y la descripción; el contenido se
-              lee bajo demanda, así que conviene que sea preciso y accionable.
+              {t.skills.form.contentHint}
             </p>
           </div>
 
@@ -257,7 +264,7 @@ export default function SkillsManager({
               onClick={() => setFormId(undefined)}
               className="cursor-pointer"
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
             <Button
               type="submit"
@@ -266,7 +273,7 @@ export default function SkillsManager({
               className="cursor-pointer"
             >
               <Save className="size-3.5" />
-              {formId ? "Guardar cambios" : "Crear skill"}
+              {formId ? t.skills.form.saveChanges : t.skills.form.create}
             </Button>
           </div>
         </form>
@@ -276,10 +283,10 @@ export default function SkillsManager({
         <div className="rounded-lg border border-dashed border-border/60 p-8 text-center">
           <BookOpen className="mx-auto mb-2 size-6 text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">
-            Todavía no hay skills.
+            {t.skills.empty.title}
           </p>
           <p className="mt-1 text-xs text-muted-foreground/80">
-            Pídele al agente en el chat: «crea una skill para configurar VLANs».
+            {t.skills.empty.hint}
           </p>
         </div>
       ) : (
@@ -306,7 +313,7 @@ export default function SkillsManager({
                         variant="secondary"
                         className="font-mono text-[10px]"
                       >
-                        deshabilitada
+                        {t.skills.form.disabled}
                       </Badge>
                     )}
                   </div>
@@ -325,8 +332,12 @@ export default function SkillsManager({
                       onCheckedChange={() => alternar(skill)}
                       aria-label={
                         skill.enabled
-                          ? `Deshabilitar ${skill.title}`
-                          : `Habilitar ${skill.title}`
+                          ? interp(t.skills.actions.disable, {
+                              title: skill.title,
+                            })
+                          : interp(t.skills.actions.enable, {
+                              title: skill.title,
+                            })
                       }
                     />
                   )}
@@ -336,7 +347,9 @@ export default function SkillsManager({
                       size="icon-xs"
                       onClick={() => setFormId(skill.id)}
                       className="cursor-pointer"
-                      aria-label={`Editar ${skill.title}`}
+                      aria-label={interp(t.skills.actions.edit, {
+                        title: skill.title,
+                      })}
                     >
                       <Pencil className="size-3.5" />
                     </Button>
@@ -348,7 +361,9 @@ export default function SkillsManager({
                       disabled={borrando === skill.id}
                       onClick={() => eliminar(skill)}
                       className="cursor-pointer text-red-500 hover:text-red-600"
-                      aria-label={`Eliminar ${skill.title}`}
+                      aria-label={interp(t.skills.actions.delete, {
+                        title: skill.title,
+                      })}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>

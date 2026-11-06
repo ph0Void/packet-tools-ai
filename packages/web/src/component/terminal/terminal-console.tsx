@@ -17,6 +17,7 @@ import {
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,8 @@ import { getSocket } from "@/hooks/useCiscoSocket";
 import { confirmTerminalOpen } from "@/service/TerminalSessionService";
 import { useTerminalStore } from "@/store/terminal.store";
 import { cn } from "@/lib/utils";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 
 export type TerminalRole = "USER" | "STAFF" | "ADMIN";
 
@@ -282,7 +285,10 @@ function colorizeCiscoOutput(text: string): string {
   });
 }
 
-function extractMessage(payload: unknown): string {
+function extractMessage(
+  payload: unknown,
+  fallback: string,
+): string {
   if (
     typeof payload === "object" &&
     payload !== null &&
@@ -291,7 +297,7 @@ function extractMessage(payload: unknown): string {
   ) {
     return (payload as { message: string }).message;
   }
-  return "Error desconocido en la terminal";
+  return fallback;
 }
 
 interface TerminalConsoleProps {
@@ -300,6 +306,8 @@ interface TerminalConsoleProps {
 }
 
 export function TerminalConsole({ role, className }: TerminalConsoleProps) {
+  const t = useT();
+  const tRef = useRef(t);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
 
@@ -324,6 +332,10 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
   const [prefs, setPrefs] = useState<PrefsTerminal>(() => leerPrefs());
 
   const [hayContenido, setHayContenido] = useState(false);
+
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   // Contador visible en el menú (los refs no provocan re-render)
   const [totalComandos, setTotalComandos] = useState(0);
@@ -502,11 +514,11 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
         terminal.clearPendingOpenRequest();
       }
       if (!result.success) {
-        toast.error(result.message);
+        notifyError(result.message);
         return;
       }
       if (body.accepted) {
-        toast.success("Consola abierta por el agente.");
+        toast.success(tRef.current.terminal.console.agentOpened);
       }
     };
 
@@ -546,7 +558,12 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
 
       setHayContenido(true);
       term.writeln(
-        `\r\n${SGR.bold}${SGR.green}●${SGR.reset} ${SGR.bold}Sesión ${type || "remota"} iniciada correctamente${SGR.reset}\r\n`,
+        `\r\n${SGR.bold}${SGR.green}●${SGR.reset} ${SGR.bold}${interp(
+          tRef.current.terminal.console.sessionStarted,
+          {
+            type: type || tRef.current.terminal.console.sessionRemote,
+          },
+        )}${SGR.reset}\r\n`,
       );
 
       ajustar();
@@ -561,7 +578,10 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
     };
 
     const onError = (payload: unknown) => {
-      const message = extractMessage(payload);
+      const message = extractMessage(
+        payload,
+        tRef.current.terminal.console.unknownError,
+      );
       const pendiente = store.getState().pendingOpenRequest;
       if (pendiente) {
         void confirmarAperturaPendiente(pendiente.requestId, {
@@ -575,9 +595,11 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
       pendingEchoRef.current = "";
       setHayContenido(true);
       term.writeln(
-        `\r\n${SGR.bold}${SGR.red}[Error]${SGR.reset} ${message}\r\n`,
+        `\r\n${SGR.bold}${SGR.red}[${
+          tRef.current.terminal.console.errorLabel
+        }]${SGR.reset} ${message}\r\n`,
       );
-      toast.error(message);
+      notifyError(message);
     };
 
     const onClosed = () => {
@@ -586,7 +608,7 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
       if (pendiente) {
         void confirmarAperturaPendiente(pendiente.requestId, {
           accepted: false,
-          error: "La conexión se cerró antes de establecerse.",
+          error: tRef.current.terminal.console.connectionClosedEarly,
         });
       }
       if (store.getState().status === "CONNECTING") return;
@@ -594,7 +616,9 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
       store.getState().setTerminalBusy(false);
       useTerminalStore.getState().clearActiveSessionInfo();
       term.writeln(
-        `\r\n${SGR.bold}${SGR.yellow}[Conexión cerrada]${SGR.reset}\r\n`,
+        `\r\n${SGR.bold}${SGR.yellow}[${
+          tRef.current.terminal.console.connectionClosed
+        }]${SGR.reset}\r\n`,
       );
     };
 
@@ -651,8 +675,10 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
 
       const line = inj.commands.join(" ; ");
       term.write(
-        `\r\n${SGR.bold}${SGR.cyan}[Asistente IA]${SGR.reset} ${
-          inj.routed ? "" : "(conexión directa)"
+        `\r\n${SGR.bold}${SGR.cyan}[${
+          tRef.current.terminal.console.assistantTag
+        }]${SGR.reset} ${
+          inj.routed ? "" : tRef.current.terminal.console.directConnection
         } ➔ ${SGR.bold}${SGR.yellow}${line}${SGR.reset}\r\n`,
       );
     }
@@ -702,14 +728,18 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
   const copiarSeleccion = useCallback(() => {
     const seleccion = termRef.current?.getSelection() ?? "";
     if (!seleccion) {
-      toast.info("Selecciona texto en la consola para copiarlo.");
+      toast.info(t.terminal.console.toasts.selectText);
       return;
     }
     void navigator.clipboard
       .writeText(seleccion)
-      .then(() => toast.success("Copiado al portapapeles"))
-      .catch(() => toast.error("No se pudo copiar"));
-  }, []);
+      .then(() => toast.success(t.terminal.console.toasts.copied))
+      .catch(() => notifyError(t.terminal.console.toasts.copyError));
+  }, [
+    t.terminal.console.toasts.copied,
+    t.terminal.console.toasts.copyError,
+    t.terminal.console.toasts.selectText,
+  ]);
 
   const irAlFinal = useCallback(() => {
     termRef.current?.scrollToBottom();
@@ -737,18 +767,22 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
     while (lineas.length > 0 && lineas[lineas.length - 1] === "") lineas.pop();
 
     if (lineas.length === 0) {
-      toast.info("No hay contenido para descargar.");
+      toast.info(t.terminal.console.toasts.noContent);
       return;
     }
 
     descargarTexto(lineas.join("\r\n") + "\r\n", deviceName, "sesion");
-    toast.success("Sesión descargada");
-  }, [deviceName]);
+    toast.success(t.terminal.console.toasts.sessionDownloaded);
+  }, [
+    deviceName,
+    t.terminal.console.toasts.noContent,
+    t.terminal.console.toasts.sessionDownloaded,
+  ]);
 
   /** Opción B: solo los comandos escritos por el usuario (y los de la IA). */
   const descargarComandos = useCallback(() => {
     if (comandosRef.current.length === 0) {
-      toast.info("Aún no hay comandos registrados.");
+      toast.info(t.terminal.console.toasts.noCommands);
       return;
     }
     descargarTexto(
@@ -756,8 +790,12 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
       deviceName,
       "comandos",
     );
-    toast.success("Comandos descargados");
-  }, [deviceName]);
+    toast.success(t.terminal.console.toasts.commandsDownloaded);
+  }, [
+    deviceName,
+    t.terminal.console.toasts.commandsDownloaded,
+    t.terminal.console.toasts.noCommands,
+  ]);
 
   const puntoEstado =
     status === "CONNECTED"
@@ -767,10 +805,10 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
         : "bg-zinc-400";
   const textoEstado =
     status === "CONNECTED"
-      ? "En línea"
+      ? t.terminal.console.status.online
       : status === "CONNECTING"
-        ? "Conectando…"
-        : "Sin sesión";
+        ? t.terminal.console.status.connecting
+        : t.terminal.console.status.noSession;
 
   const botonBarra =
     "inline-flex size-6 items-center justify-center rounded-md transition-colors duration-150 hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring aria-pressed:bg-primary/15 aria-pressed:text-primary data-[state=open]:bg-black/10 dark:data-[state=open]:bg-white/10";
@@ -792,7 +830,7 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn("size-2 shrink-0 rounded-full", puntoEstado)} />
           <span className={cn("truncate font-mono text-xs font-medium", TEXTO)}>
-            {deviceName ?? "Consola"}
+            {deviceName ?? t.terminal.console.headerFallback}
           </span>
           <span className="hidden font-mono text-[11px] sm:inline">
             {textoEstado}
@@ -805,8 +843,8 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
             onClick={() => actualizarPrefs({ fontSize: prefs.fontSize - 1 })}
             disabled={prefs.fontSize <= FONT_MIN}
             className={botonBarra}
-            aria-label="Reducir tamaño de letra"
-            title="Reducir tamaño de letra"
+            aria-label={t.terminal.console.fontDecrease}
+            title={t.terminal.console.fontDecrease}
           >
             <Minus className="size-3.5" />
           </button>
@@ -816,8 +854,10 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
               actualizarPrefs({ fontSize: PREFS_DEFECTO.fontSize })
             }
             className="min-w-9 rounded-md px-1 text-center font-mono text-[11px] tabular-nums transition-colors hover:bg-black/10 dark:hover:bg-white/10"
-            aria-label={`Tamaño de letra ${prefs.fontSize} píxeles. Pulsa para restablecer`}
-            title="Restablecer tamaño"
+            aria-label={interp(t.terminal.console.fontSizeAria, {
+              size: prefs.fontSize,
+            })}
+            title={t.terminal.console.fontReset}
           >
             {prefs.fontSize}px
           </button>
@@ -826,8 +866,8 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
             onClick={() => actualizarPrefs({ fontSize: prefs.fontSize + 1 })}
             disabled={prefs.fontSize >= FONT_MAX}
             className={botonBarra}
-            aria-label="Aumentar tamaño de letra"
-            title="Aumentar tamaño de letra"
+            aria-label={t.terminal.console.fontIncrease}
+            title={t.terminal.console.fontIncrease}
           >
             <Plus className="size-3.5" />
           </button>
@@ -837,8 +877,16 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
             onClick={() => actualizarPrefs({ bold: !prefs.bold })}
             aria-pressed={prefs.bold}
             className={botonBarra}
-            aria-label={prefs.bold ? "Desactivar negrita" : "Activar negrita"}
-            title={prefs.bold ? "Negrita: activada" : "Negrita: desactivada"}
+            aria-label={
+              prefs.bold
+                ? t.terminal.console.boldDisable
+                : t.terminal.console.boldEnable
+            }
+            title={
+              prefs.bold
+                ? t.terminal.console.boldActive
+                : t.terminal.console.boldInactive
+            }
           >
             <Bold className="size-3.5" />
           </button>
@@ -849,8 +897,8 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
             type="button"
             onClick={copiarSeleccion}
             className={botonBarra}
-            aria-label="Copiar selección"
-            title="Copiar selección"
+            aria-label={t.terminal.console.copySelection}
+            title={t.terminal.console.copySelection}
           >
             <Copy className="size-3.5" />
           </button>
@@ -860,15 +908,15 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
               <button
                 type="button"
                 className={botonBarra}
-                aria-label="Descargar como .txt"
-                title="Descargar como .txt"
+                aria-label={t.terminal.console.downloadTxt}
+                title={t.terminal.console.downloadTxt}
               >
                 <Download className="size-3.5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                Descargar como .txt
+                {t.terminal.console.downloadTxt}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -877,7 +925,7 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
                 className="cursor-pointer"
               >
                 <FileText className="size-4" />
-                Sesión completa
+                {t.terminal.console.fullSession}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={totalComandos === 0}
@@ -885,7 +933,7 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
                 className="cursor-pointer"
               >
                 <ListChecks className="size-4" />
-                Solo comandos
+                {t.terminal.console.onlyCommands}
                 <span className="ml-auto font-mono text-xs tabular-nums text-muted-foreground">
                   {totalComandos}
                 </span>
@@ -897,8 +945,8 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
             type="button"
             onClick={irAlFinal}
             className={botonBarra}
-            aria-label="Ir al final"
-            title="Ir al final"
+            aria-label={t.terminal.console.scrollEnd}
+            title={t.terminal.console.scrollEnd}
           >
             <ArrowDownToLine className="size-3.5" />
           </button>
@@ -906,8 +954,8 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
             type="button"
             onClick={limpiar}
             className={botonBarra}
-            aria-label="Limpiar consola"
-            title="Limpiar consola"
+            aria-label={t.terminal.console.clear}
+            title={t.terminal.console.clear}
           >
             <Eraser className="size-3.5" />
           </button>
@@ -920,10 +968,10 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
         {!hayContenido && status === "DISCONNECTED" && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 text-center">
             <p className={cn("font-mono text-sm font-medium", TEXTO)}>
-              Sin sesión activa
+              {t.terminal.console.emptyTitle}
             </p>
             <p className={cn("max-w-xs text-xs", TEXTO_SUAVE)}>
-              Elige un dispositivo y pulsa Conectar, o usa la conexión manual.
+              {t.terminal.console.emptyBody}
             </p>
           </div>
         )}
@@ -931,7 +979,7 @@ export function TerminalConsole({ role, className }: TerminalConsoleProps) {
 
       {readOnly && status === "CONNECTED" && (
         <div className="pointer-events-none absolute bottom-3 right-3 z-10 rounded-md border border-amber-500/40 bg-background/90 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-          Modo solo lectura
+          {t.terminal.console.readOnly}
         </div>
       )}
     </div>

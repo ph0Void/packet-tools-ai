@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Search, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 import { deleteAlertAction } from "@/action/AlertAction";
 import AlertTable from "./table/AlertTable";
 import ModalAlert from "./ModalAlert";
 import type { AlertRow } from "./types";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/hooks/useT";
 
 const SEVERITY_OPTIONS = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
 const PAGE_SIZE = 10;
@@ -24,6 +26,7 @@ export default function TableAlertWrapper({
   topologies,
   userRole,
 }: TableAlertWrapperProps) {
+  const t = useT();
   const router = useRouter();
 
   const [severityFilter, setSeverityFilter] = useState<string>("TODAS");
@@ -103,20 +106,20 @@ export default function TableAlertWrapper({
   };
 
   const handleDeleteAlert = async (id: string) => {
-    if (!confirm("¿Eliminar de forma permanente esta alerta del sistema?"))
+    if (!confirm(t.alerts.toasts.deleteConfirm))
       return;
 
     setDeletingId(id);
     try {
       const res = await deleteAlertAction(id);
       if (res.success) {
-        toast.success(res.message || "Alerta eliminada del sistema.");
+        toast.success(res.message || t.alerts.toasts.deleted);
         router.refresh();
       } else {
-        toast.error(res.message || "No se pudo eliminar la alerta.");
+        notifyError(res.message || t.alerts.toasts.deleteError);
       }
     } catch {
-      toast.error("Error al procesar la eliminación.");
+      notifyError(t.alerts.toasts.deleteUnexpected);
     } finally {
       setDeletingId(null);
     }
@@ -129,10 +132,10 @@ export default function TableAlertWrapper({
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <ShieldAlert className="h-5 w-5 text-primary" />
-            Alertas
+            {t.alerts.header.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gestione los reportes de incidencias del sistema
+            {t.alerts.header.description}
           </p>
         </div>
 
@@ -142,7 +145,7 @@ export default function TableAlertWrapper({
             className="gap-2 self-start sm:self-auto shrink-0"
           >
             <AlertTriangle className="w-4 h-4" />
-            Reportar Incidencia
+            {t.alerts.header.report}
           </Button>
         )}
       </div>
@@ -154,7 +157,7 @@ export default function TableAlertWrapper({
             type="text"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Buscar por título o descripción..."
+            placeholder={t.alerts.filters.searchPlaceholder}
             className="w-full pl-9 pr-3 py-2 bg-card border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-sky-500"
           />
         </div>
@@ -162,10 +165,10 @@ export default function TableAlertWrapper({
         <select
           value={severityFilter}
           onChange={(e) => handleSeverityChange(e.target.value)}
-          aria-label="Filtrar por gravedad"
+          aria-label={t.alerts.filters.severityAria}
           className="px-3 py-2 bg-card border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
         >
-          <option value="TODAS">TODAS LAS GRAVEDADES</option>
+          <option value="TODAS">{t.alerts.filters.allSeverities}</option>
           {SEVERITY_OPTIONS.map((severity) => (
             <option key={severity} value={severity}>
               {severity}
@@ -178,12 +181,12 @@ export default function TableAlertWrapper({
           onChange={(e) =>
             handleStateChange(e.target.value as "ALL" | "ACTIVE" | "RESOLVED")
           }
-          aria-label="Filtrar por estado"
+          aria-label={t.alerts.filters.stateAria}
           className="px-3 py-2 bg-card border border-border rounded-xl text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 cursor-pointer"
         >
-          <option value="ALL">Todas</option>
-          <option value="ACTIVE">Activas</option>
-          <option value="RESOLVED">Resueltas</option>
+          <option value="ALL">{t.alerts.filters.all}</option>
+          <option value="ACTIVE">{t.alerts.filters.active}</option>
+          <option value="RESOLVED">{t.alerts.filters.resolved}</option>
         </select>
       </div>
 

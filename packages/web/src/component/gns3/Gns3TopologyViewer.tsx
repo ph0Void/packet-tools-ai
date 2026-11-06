@@ -18,6 +18,7 @@ import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
 import { Download, Loader2, Network, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getGns3Projects, getGns3Topology } from "@/service/Gns3Service";
 import type { Gns3Project, Gns3Topology } from "@/service/Gns3Service";
+import { useT } from "@/hooks/useT";
 
 type Gns3NodeData = {
   name: string;
@@ -113,6 +115,8 @@ const nodeTypes = { gns3Node: Gns3Node } satisfies NodeTypes;
 
 function Gns3TopologyViewerInner() {
   const { fitView } = useReactFlow();
+  const t = useT();
+  const gns3 = t.devices.gns3;
 
   const [projects, setProjects] = useState<Gns3Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -143,7 +147,7 @@ function Gns3TopologyViewerInner() {
       } else {
         setProjects([]);
         setProjectsError(
-          result.message || "No se pudieron cargar los proyectos de GNS3.",
+          result.message || gns3.loadProjectsFailed,
         );
       }
       setIsLoadingProjects(false);
@@ -154,7 +158,7 @@ function Gns3TopologyViewerInner() {
     return () => {
       cancelled = true;
     };
-  }, [projectsReloadKey]);
+  }, [projectsReloadKey, gns3.loadProjectsFailed]);
 
   async function loadTopology(projectId: string) {
     const requestId = topologyRequestRef.current + 1;
@@ -172,7 +176,7 @@ function Gns3TopologyViewerInner() {
       setTopology(result.data);
     } else {
       setTopologyError(
-        result.message || "No se pudo cargar la topología del proyecto.",
+        result.message || gns3.loadTopologyFailed,
       );
     }
     setIsLoadingTopology(false);
@@ -201,9 +205,9 @@ function Gns3TopologyViewerInner() {
       y: typeof node.y === "number" ? node.y : 0,
     },
     data: {
-      name: node.name || "Sin nombre",
-      nodeType: node.node_type || "desconocido",
-      status: node.status || "desconocido",
+      name: node.name || gns3.noName,
+      nodeType: node.node_type || gns3.unknown,
+      status: node.status || gns3.unknown,
     },
   }));
 
@@ -276,10 +280,10 @@ function Gns3TopologyViewerInner() {
       link.click();
       link.remove();
 
-      toast.success("Topología exportada como PNG.");
+      toast.success(gns3.exported);
     } catch (error) {
       console.error("Error al exportar la topología:", error);
-      toast.error("No se pudo exportar la topología como PNG.");
+      notifyError(gns3.exportFailed);
     } finally {
       setIsExporting(false);
     }
@@ -291,7 +295,7 @@ function Gns3TopologyViewerInner() {
     return (
       <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card/40 text-sm text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        Cargando proyectos de GNS3...
+        {gns3.loadingProjects}
       </div>
     );
   }
@@ -302,7 +306,7 @@ function Gns3TopologyViewerInner() {
         <p className="text-sm text-destructive">{projectsError}</p>
         <Button variant="outline" size="sm" onClick={handleRefresh}>
           <RefreshCw className="h-4 w-4" />
-          Reintentar
+          {gns3.retry}
         </Button>
       </div>
     );
@@ -313,7 +317,7 @@ function Gns3TopologyViewerInner() {
       <div className="flex min-h-[420px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card/40 p-6 text-center">
         <Network className="h-8 w-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          No hay proyectos disponibles en el servidor GNS3.
+          {gns3.noProjects}
         </p>
       </div>
     );
@@ -328,8 +332,8 @@ function Gns3TopologyViewerInner() {
           onValueChange={handleProjectChange}
           disabled={isLoadingProjects}
         >
-          <SelectTrigger className="w-full sm:w-[300px]" aria-label="Proyecto GNS3">
-            <SelectValue placeholder="Selecciona un proyecto" />
+          <SelectTrigger className="w-full sm:w-[300px]" aria-label={gns3.projectLabel}>
+            <SelectValue placeholder={gns3.selectProject} />
           </SelectTrigger>
           <SelectContent>
             {projects.map((project) => (
@@ -365,7 +369,7 @@ function Gns3TopologyViewerInner() {
             disabled={isLoadingProjects}
           >
             <RefreshCw className={cn("h-4 w-4", isLoadingProjects && "animate-spin")} />
-            Actualizar
+            {gns3.refresh}
           </Button>
 
           <Button
@@ -378,7 +382,7 @@ function Gns3TopologyViewerInner() {
             ) : (
               <Download className="h-4 w-4" />
             )}
-            Exportar PNG
+            {gns3.exportPng}
           </Button>
         </div>
       </div>
@@ -414,7 +418,7 @@ function Gns3TopologyViewerInner() {
         {isLoadingTopology && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-background/70 text-sm text-muted-foreground backdrop-blur-sm">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            Cargando topología...
+            {gns3.loadingTopology}
           </div>
         )}
 
@@ -427,7 +431,7 @@ function Gns3TopologyViewerInner() {
               onClick={() => selectedProjectId && void loadTopology(selectedProjectId)}
             >
               <RefreshCw className="h-4 w-4" />
-              Reintentar
+              {gns3.retry}
             </Button>
           </div>
         )}
@@ -436,7 +440,7 @@ function Gns3TopologyViewerInner() {
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/60 p-6 text-center backdrop-blur-sm">
             <Network className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Selecciona un proyecto para visualizar su topología.
+              {gns3.selectProjectHint}
             </p>
           </div>
         )}
@@ -445,7 +449,7 @@ function Gns3TopologyViewerInner() {
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/60 p-6 text-center backdrop-blur-sm">
             <Network className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Este proyecto no tiene nodos para mostrar.
+              {gns3.noNodes}
             </p>
           </div>
         )}

@@ -4,8 +4,11 @@ import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import UserTable from "./table/UserTable";
 import ModalUser from "./ModalUser";
-import { UserPlus, Shield, User } from "lucide-react";
+import { UserPlus, User } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 import type { UserTypes } from "@/types/User";
 import { deleteUserAction } from "@/action/UserAction";
 import { Button } from "@/components/ui/button";
@@ -26,6 +29,7 @@ export default function TableUserWrapper({
   pagination,
   isAdmin,
 }: TableUserWrapperProps) {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -57,9 +61,7 @@ export default function TableUserWrapper({
     if (!isAdmin) return;
 
     if (
-      !confirm(
-        `¿Eliminar al operador ${username}? Esta acción borrará todas sus asociaciones.`,
-      )
+      !confirm(interp(t.users.list.deleteConfirm, { name: username }))
     ) {
       return;
     }
@@ -67,14 +69,14 @@ export default function TableUserWrapper({
     try {
       const res = await deleteUserAction(id);
       if (res.success) {
-        toast.success(res.message || "Operador eliminado correctamente.");
+        toast.success(res.message || t.users.list.toasts.deleted);
         router.refresh();
       } else {
-        toast.error(res.message || "No se pudo eliminar al operador.");
+        notifyError(res.message || t.users.list.toasts.deleteFailed);
       }
     } catch (err) {
       console.error(err);
-      toast.error("Error al procesar la eliminación.");
+      notifyError(t.users.list.toasts.deleteError);
     }
   };
 
@@ -85,10 +87,10 @@ export default function TableUserWrapper({
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <User className="h-5 w-5 text-primary" />
-            Usuarios
+            {t.users.list.title}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Gestione a los usuarios del sistema
+            {t.users.list.subtitle}
           </p>
         </div>
 
@@ -98,7 +100,7 @@ export default function TableUserWrapper({
             className="gap-2 self-start sm:self-auto shrink-0"
           >
             <UserPlus className="w-4 h-4" />
-            Registrar Operador
+            {t.users.list.register}
           </Button>
         )}
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import "@xterm/xterm/css/xterm.css";
@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ import { getSocket } from "@/hooks/useCiscoSocket";
 import { useTerminalStore, type TerminalStatus } from "@/store/terminal.store";
 import { useUiStore } from "@/store/uiStore";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 
 import { TerminalConsole } from "./terminal-console";
 
@@ -80,31 +82,20 @@ const EMPTY_MANUAL: ManualForm = {
 
 const PROTOCOL_GROUPS = ["SSH", "TELNET", "SERIAL"] as const;
 
-const ANSI = {
-  cyan: "\x1b[36m",
-  red: "\x1b[31m",
-  yellow: "\x1b[33m",
-  dim: "\x1b[2m",
-  reset: "\x1b[0m",
-};
-
 const STATUS_META: Record<
   TerminalStatus,
-  { label: string; dot: string; badgeClass: string }
+  { dot: string; badgeClass: string }
 > = {
   DISCONNECTED: {
-    label: "Desconectado",
     dot: "bg-muted-foreground/60",
     badgeClass: "border-border/60 bg-muted/40 text-muted-foreground",
   },
   CONNECTING: {
-    label: "Conectando…",
     dot: "bg-amber-500 animate-pulse dark:bg-amber-400",
     badgeClass:
       "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   CONNECTED: {
-    label: "En línea",
     dot: "bg-emerald-500 dark:bg-emerald-400",
     badgeClass:
       "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -112,6 +103,7 @@ const STATUS_META: Record<
 };
 
 export function TerminalWorkspace({ role }: { role: TerminalRole }) {
+  const t = useT();
   const status = useTerminalStore((s) => s.status);
   const deviceProviderId = useTerminalStore((s) => s.deviceProviderId);
   const setDeviceProviderId = useTerminalStore((s) => s.setDeviceProviderId);
@@ -141,7 +133,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
         if (!active) return;
         setDevices(json.success && Array.isArray(json.data) ? json.data : []);
       } catch {
-        if (active) toast.error("No se pudieron cargar los dispositivos");
+        if (active) notifyError(t.terminal.workspace.toasts.loadError);
       } finally {
         if (active) setLoadingDevices(false);
       }
@@ -149,7 +141,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t.terminal.workspace.toasts.loadError]);
 
   useEffect(() => {
     const storedId = window.sessionStorage.getItem("pt-selected-device");
@@ -190,9 +182,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
       const socket = getSocket();
 
       if (!socket.connected) {
-        toast.error(
-          "Sin conexión con el servidor. Revisa la sesión o reinicia la aplicación.",
-        );
+        notifyError(t.terminal.workspace.toasts.noServer);
         useTerminalStore.getState().setStatus("DISCONNECTED");
         return;
       }
@@ -209,12 +199,12 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
       useTerminalStore.getState().setStatus("CONNECTING");
       socket.emit("terminal:connect", payload);
     },
-    [],
+    [t.terminal.workspace.toasts.noServer],
   );
 
   const handleConnectSelected = useCallback(() => {
     if (!selectedDevice) {
-      toast.warning("Selecciona un dispositivo o usa conexión manual");
+      toast.warning(t.terminal.workspace.toasts.selectDevice);
       return;
     }
     startSession(
@@ -222,7 +212,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
       selectedDevice.protocol,
       selectedDevice.name,
     );
-  }, [selectedDevice, startSession]);
+  }, [selectedDevice, startSession, t.terminal.workspace.toasts.selectDevice]);
 
   const handleDisconnect = useCallback(() => {
     const socket = getSocket();
@@ -236,14 +226,14 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
     const payload: Record<string, unknown> = { type };
     if (type === "SERIAL") {
       if (!serialPort.trim()) {
-        toast.warning("Indica el puerto serie (ej. COM3)");
+        toast.warning(t.terminal.workspace.toasts.serialRequired);
         return;
       }
       payload.serialPort = serialPort.trim();
       if (baudRate.trim()) payload.baudRate = Number(baudRate);
     } else {
       if (!host.trim()) {
-        toast.warning("Indica el host para la conexión manual");
+        toast.warning(t.terminal.workspace.toasts.hostRequired);
         return;
       }
       payload.host = host.trim();
@@ -252,10 +242,21 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
       if (password) payload.password = password;
     }
     setManualOpen(false);
-    startSession(payload, type, "conexión manual");
-  }, [manual, startSession]);
+    startSession(payload, type, t.terminal.workspace.manualSessionName);
+  }, [
+    manual,
+    startSession,
+    t.terminal.workspace.manualSessionName,
+    t.terminal.workspace.toasts.hostRequired,
+    t.terminal.workspace.toasts.serialRequired,
+  ]);
 
   const meta = STATUS_META[status];
+  const statusLabels: Record<TerminalStatus, string> = {
+    DISCONNECTED: t.terminal.status.disconnected,
+    CONNECTING: t.terminal.status.connecting,
+    CONNECTED: t.terminal.status.connected,
+  };
 
   return (
     <div className="flex h-full min-h-[480px] ">
@@ -266,12 +267,12 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
             <div className="flex items-center gap-2">
               <TerminalIcon className="size-4 text-primary" />
               <h1 className="text-2xl font-semibold tracking-wide text-foreground">
-                Terminal
+                {t.terminal.workspace.title}
               </h1>
             </div>
             <Badge variant="outline" className={cn("gap-1.5", meta.badgeClass)}>
               <span className={cn("size-1.5 rounded-full", meta.dot)} />
-              {meta.label}
+              {statusLabels[status]}
             </Badge>
           </div>
 
@@ -283,22 +284,22 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
               <SelectTrigger
                 disabled={loadingDevices}
                 className="w-full bg-background sm:w-64"
-                aria-label="Dispositivo a conectar"
+                aria-label={t.terminal.workspace.selectAria}
               >
                 <SelectValue
                   placeholder={
                     loadingDevices
-                      ? "Cargando dispositivos…"
+                      ? t.terminal.workspace.loadingDevices
                       : devices.length === 0
-                        ? "Sin dispositivos disponibles"
-                        : "Seleccionar dispositivo"
+                        ? t.terminal.workspace.noDevicesOption
+                        : t.terminal.workspace.selectDevice
                   }
                 />
               </SelectTrigger>
               <SelectContent>
                 {grouped.length === 0 ? (
                   <p className="px-3 py-2 text-xs text-muted-foreground">
-                    No hay dispositivos registrados todavía.
+                    {t.terminal.workspace.noDevicesRegistered}
                   </p>
                 ) : (
                   grouped.map((group) => (
@@ -321,14 +322,14 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
               onClick={() => setManualOpen(true)}
             >
               <MonitorCog data-icon="inline-start" />
-              Manual
+              {t.terminal.workspace.manual}
             </Button>
 
             {role !== "USER" && (
               <label className="flex cursor-pointer select-none items-center gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-1">
                 <Switch checked={localEcho} onCheckedChange={setLocalEcho} />
                 <span className="hidden text-sm font-medium text-foreground sm:inline">
-                  Eco local
+                  {t.terminal.workspace.localEcho}
                 </span>
               </label>
             )}
@@ -341,7 +342,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                   className="cursor-pointer border-red-500/40 bg-red-500/10 text-red-600 hover:bg-red-500/20 hover:text-red-600 dark:border-red-400/40 dark:text-red-400 dark:hover:text-red-300"
                 >
                   <Power data-icon="inline-start" />
-                  Desconectar
+                  {t.terminal.workspace.disconnect}
                 </Button>
               ) : (
                 <Button
@@ -357,7 +358,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                   ) : (
                     <PlugZap data-icon="inline-start" />
                   )}
-                  Conectar
+                  {t.terminal.workspace.connect}
                 </Button>
               )}
 
@@ -379,7 +380,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                 ) : (
                   <Sparkles data-icon="inline-start" />
                 )}
-                Asistente IA
+                {t.terminal.workspace.assistant}
               </Button>
             </div>
           </div>
@@ -391,8 +392,7 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
               <MonitorCog className="size-6 text-muted-foreground" />
             </div>
             <p className="max-w-xs text-sm text-muted-foreground">
-              Aún no hay dispositivos registrados. Crea uno para poder
-              conectarte a la consola.
+              {t.terminal.workspace.noDevicesTitle}
             </p>
             <Button
               asChild
@@ -400,7 +400,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
               size="sm"
               className="cursor-pointer"
             >
-              <Link href="/dashboard/connection">Ir a dispositivos</Link>
+              <Link href="/dashboard/connection">
+                {t.terminal.workspace.goToDevices}
+              </Link>
             </Button>
           </div>
         )}
@@ -411,15 +413,17 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
       <Dialog open={manualOpen} onOpenChange={setManualOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Conexión manual</DialogTitle>
+            <DialogTitle>{t.terminal.workspace.manualDialog.title}</DialogTitle>
             <DialogDescription>
-              Conecta por SSH, Telnet o puerto serie sin dispositivo guardado.
+              {t.terminal.workspace.manualDialog.description}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="manual-type">Tipo</Label>
+              <Label htmlFor="manual-type">
+                {t.terminal.workspace.manualDialog.type}
+              </Label>
               <Select
                 value={manual.type}
                 onValueChange={(value) =>
@@ -435,7 +439,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                 <SelectContent>
                   <SelectItem value="SSH">SSH</SelectItem>
                   <SelectItem value="TELNET">Telnet</SelectItem>
-                  <SelectItem value="SERIAL">Serie</SelectItem>
+                  <SelectItem value="SERIAL">
+                    {t.terminal.workspace.manualDialog.serialType}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -443,7 +449,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
             {manual.type === "SERIAL" ? (
               <>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="manual-serial">Puerto serie</Label>
+                  <Label htmlFor="manual-serial">
+                    {t.terminal.workspace.manualDialog.serialPort}
+                  </Label>
                   <Input
                     id="manual-serial"
                     placeholder="COM3"
@@ -457,7 +465,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="manual-baud">Baudrate</Label>
+                  <Label htmlFor="manual-baud">
+                    {t.terminal.workspace.manualDialog.baudrate}
+                  </Label>
                   <Input
                     id="manual-baud"
                     inputMode="numeric"
@@ -476,7 +486,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
               <>
                 <div className="grid gap-3 sm:grid-cols-[1fr_7rem]">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="manual-host">Host</Label>
+                    <Label htmlFor="manual-host">
+                      {t.terminal.workspace.manualDialog.host}
+                    </Label>
                     <Input
                       id="manual-host"
                       placeholder="192.168.1.1"
@@ -487,7 +499,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="manual-port">Puerto</Label>
+                    <Label htmlFor="manual-port">
+                      {t.terminal.workspace.manualDialog.port}
+                    </Label>
                     <Input
                       id="manual-port"
                       inputMode="numeric"
@@ -501,7 +515,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
-                    <Label htmlFor="manual-user">Usuario</Label>
+                    <Label htmlFor="manual-user">
+                      {t.terminal.workspace.manualDialog.username}
+                    </Label>
                     <Input
                       id="manual-user"
                       autoComplete="off"
@@ -515,7 +531,9 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="manual-password">Contraseña</Label>
+                    <Label htmlFor="manual-password">
+                      {t.terminal.workspace.manualDialog.password}
+                    </Label>
                     <Input
                       id="manual-password"
                       type="password"
@@ -540,11 +558,11 @@ export function TerminalWorkspace({ role }: { role: TerminalRole }) {
               variant="ghost"
               onClick={() => setManualOpen(false)}
             >
-              Cancelar
+              {t.common.cancel}
             </Button>
             <Button className="cursor-pointer" onClick={handleConnectManual}>
               <PlugZap data-icon="inline-start" />
-              Conectar
+              {t.terminal.workspace.manualDialog.connect}
             </Button>
           </DialogFooter>
         </DialogContent>

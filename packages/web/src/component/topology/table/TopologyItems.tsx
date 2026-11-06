@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { Edit2, Trash2 } from "lucide-react";
 import { formatDate } from "@/utils/FormatDate";
+import { interp } from "@/i18n/interp";
+import { useT, useLocale } from "@/hooks/useT";
 import type { TopologyRow } from "../types";
 
 interface TopologyItemsProps {
@@ -20,6 +22,9 @@ export default function TopologyItems({
   onEdit,
   onDelete,
 }: TopologyItemsProps) {
+  const t = useT();
+  const { locale } = useLocale();
+  const dateLocale = locale === "en" ? "en-US" : "es-ES";
   return (
     <tr className="hover:bg-muted/40 transition-colors bg-card">
       <td className="py-4 px-6 text-sm text-foreground font-medium whitespace-nowrap">
@@ -27,11 +32,11 @@ export default function TopologyItems({
       </td>
 
       <td className="py-4 px-6 text-sm whitespace-nowrap text-muted-foreground max-w-md break-words">
-        {topology.description || "Sin descripción"}
+        {topology.description || t.topology.list.noDescription}
       </td>
 
       <td className="py-4 px-6 text-sm text-muted-foreground whitespace-nowrap">
-        {formatDate(topology.createdAt)}
+        {formatDate(topology.createdAt, dateLocale)}
       </td>
 
       <td className="py-4 px-6 text-sm text-right whitespace-nowrap">
@@ -44,7 +49,7 @@ export default function TopologyItems({
           >
             <Link href={`/dashboard/workspace/${topology.id}`}>
               <Play className="h-3 w-3 fill-current" />
-              Cargar
+              {t.topology.list.load}
             </Link>
           </Button>
 
@@ -54,8 +59,10 @@ export default function TopologyItems({
                 variant="ghost"
                 size="icon-sm"
                 className="cursor-pointer"
-                aria-label={`Editar ${topology.name}`}
-                title="Editar topología"
+                aria-label={interp(t.topology.list.actions.editAria, {
+                  name: topology.name,
+                })}
+                title={t.topology.list.actions.edit}
                 onClick={() => onEdit(topology)}
               >
                 <Edit2 />
@@ -64,8 +71,10 @@ export default function TopologyItems({
                 variant="ghost"
                 size="icon-sm"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
-                aria-label={`Eliminar ${topology.name}`}
-                title="Eliminar topología"
+                aria-label={interp(t.topology.list.actions.deleteAria, {
+                  name: topology.name,
+                })}
+                title={t.topology.list.actions.delete}
                 onClick={() => onDelete(topology)}
               >
                 <Trash2 />

@@ -2,6 +2,7 @@
 
 import { MessageResponse } from "@/components/ai-elements/message";
 import { Copy, Check } from "lucide-react";
+import { useT } from "@/hooks/useT";
 
 interface ParsedContentProps {
   text: string;
@@ -15,22 +16,23 @@ export function ParsedContentComponent({
   onCopy,
   copied,
 }: ParsedContentProps) {
+  const t = useT();
   return (
     <div className="relative group/content">
       <button
         onClick={() => onCopy(text)}
-        title="Copiar respuesta"
+        title={t.chat.main.copyAria}
         className="absolute top-1 right-1 opacity-0 group-hover/content:opacity-100 transition-all flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white z-10 shadow-sm"
       >
         {copied ? (
           <>
             <Check size={12} className="text-slate-700 dark:text-slate-200" />
-            <span>Copiado</span>
+            <span>{t.chat.main.copied}</span>
           </>
         ) : (
           <>
             <Copy size={12} />
-            <span>Copiar</span>
+            <span>{t.chat.main.copy}</span>
           </>
         )}
       </button>

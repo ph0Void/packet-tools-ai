@@ -10,6 +10,8 @@ import {
 import { Download, FileText, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 
 interface StaticPreviewProps {
   attachments: ChatAttachment[];
@@ -22,6 +24,7 @@ function extension(fileName?: string): string {
 }
 
 function MiniaturaAdjunto({ att }: { att: ChatAttachment }) {
+  const t = useT();
   const [fallo, setFallo] = useState(false);
   const url = tieneContenidoServible(att) ? urlDeAdjunto(att.id as string) : null;
 
@@ -34,7 +37,7 @@ function MiniaturaAdjunto({ att }: { att: ChatAttachment }) {
             {att.fileName}
           </span>
           <span className="block truncate text-[10px] uppercase font-mono text-muted-foreground/70">
-            {url ? extension(att.fileName) : "no disponible"}
+            {url ? extension(att.fileName) : t.chat.attachments.unavailable}
           </span>
         </span>
         {url && (
@@ -49,7 +52,7 @@ function MiniaturaAdjunto({ att }: { att: ChatAttachment }) {
       <a
         href={url}
         download={att.fileName}
-        title={`Descargar ${att.fileName}`}
+        title={interp(t.chat.attachments.download, { name: att.fileName })}
         className={cn(clases, "hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring")}
       >
         {ficha}
@@ -57,7 +60,7 @@ function MiniaturaAdjunto({ att }: { att: ChatAttachment }) {
     ) : (
       <div
         className={clases}
-        title="El contenido de este adjunto ya no está disponible"
+        title={t.chat.attachments.unavailableTitle}
       >
         {ficha}
       </div>
@@ -98,6 +101,7 @@ function StaticPreviews({ attachments, align = "start", className }: StaticPrevi
 }
 
 function ContextPreviews() {
+  const t = useT();
   const attachments = usePromptInputAttachments();
 
   if (attachments.files.length === 0) return null;
@@ -128,7 +132,9 @@ function ContextPreviews() {
               id={`btn-remove-attachment-${file.id}`}
               type="button"
               onClick={() => attachments.remove(file.id)}
-              aria-label={`Quitar ${fileName}`}
+              aria-label={interp(t.chat.attachments.remove, {
+                name: fileName,
+              })}
               className="absolute cursor-pointer -top-1.5 -right-1.5 size-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity shadow-sm"
             >
               <X size={9} />

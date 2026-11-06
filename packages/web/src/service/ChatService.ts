@@ -1,4 +1,5 @@
 import { api, type ApiResponse } from "@/service/client/ApiClient";
+import { getServerDictionary } from "@/i18n/server";
 
 export interface ChatAttachment {
   id: string;
@@ -60,14 +61,15 @@ export function getChats(opciones: {
   return api<Chat[]>(suffix ? `/api/chats?${suffix}` : "/api/chats");
 }
 
-export function createChat(
+export async function createChat(
   title?: string,
   selection?: ChatSelectionPayload,
 ): Promise<ApiResponse<Chat>> {
+  const t = await getServerDictionary();
   return api<Chat>("/api/chats", {
     method: "POST",
     body: JSON.stringify({
-      title: title || "Nueva sesión de red",
+      title: title || t.forms.chat.defaultTitle,
       ...(selection ?? {}),
     }),
   });

@@ -40,6 +40,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks/useT";
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   CornerDownLeftIcon,
@@ -500,6 +501,7 @@ export const PromptInput = ({
   ...props
 }: PromptInputProps) => {
 
+  const t = useT();
   const controller = useOptionalPromptInputController();
   const usingProvider = !!controller;
 
@@ -870,12 +872,12 @@ export const PromptInput = ({
     <>
       <input
         accept={accept}
-        aria-label="Upload files"
+        aria-label={t.chat.input.uploadFiles}
         className="hidden"
         multiple={multiple}
         onChange={handleChange}
         ref={inputRef}
-        title="Upload files"
+        title={t.chat.input.uploadFiles}
         type="file"
       />
       <form
@@ -919,9 +921,10 @@ export const PromptInputTextarea = ({
   onChange,
   onKeyDown,
   className,
-  placeholder = "What would you like to know?",
+  placeholder,
   ...props
 }: PromptInputTextareaProps) => {
+  const t = useT();
   const controller = useOptionalPromptInputController();
   const attachments = usePromptInputAttachments();
   const [isComposing, setIsComposing] = useState(false);
@@ -1020,7 +1023,7 @@ export const PromptInputTextarea = ({
       onCompositionStart={handleCompositionStart}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
-      placeholder={placeholder}
+      placeholder={placeholder ?? t.chat.input.defaultPlaceholder}
       {...props}
       {...controlledProps}
     />
@@ -1179,6 +1182,7 @@ export const PromptInputSubmit = ({
   children,
   ...props
 }: PromptInputSubmitProps) => {
+  const t = useT();
   const isGenerating = status === "submitted" || status === "streaming";
 
   let Icon = <CornerDownLeftIcon className="size-4" />;
@@ -1205,7 +1209,7 @@ export const PromptInputSubmit = ({
 
   return (
     <InputGroupButton
-      aria-label={isGenerating ? "Stop" : "Submit"}
+      aria-label={isGenerating ? t.chat.input.stop : t.chat.input.submit}
       className={cn(className)}
       onClick={handleClick}
       size={size}

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { tonoNivelLog } from "../levels";
+import { useT, useLocale } from "@/hooks/useT";
 
 interface LogItemsProps {
     log: LogEntry;
@@ -14,12 +15,15 @@ interface LogItemsProps {
 }
 
 export default function LogItems({ log, canDelete, onDelete }: LogItemsProps) {
+    const t = useT();
+    const { locale } = useLocale();
+    const dateLocale = locale === "en" ? "en-US" : "es-ES";
     const levelStyle = tonoNivelLog(log.level);
 
     return (
         <tr className="hover:bg-muted/40 transition-colors bg-card">
             <td className="py-4 px-4 md:px-6 text-sm text-muted-foreground whitespace-nowrap">
-                {formatDate(log.createdAt)}
+                {formatDate(log.createdAt, dateLocale)}
             </td>
 
             <td className="py-4 px-4 md:px-6 whitespace-nowrap">
@@ -48,7 +52,7 @@ export default function LogItems({ log, canDelete, onDelete }: LogItemsProps) {
                         </span>
                     </span>
                 ) : (
-                    <span className="text-xs text-muted-foreground">Sistema</span>
+                    <span className="text-xs text-muted-foreground">{t.logs.row.system}</span>
                 )}
             </td>
 
@@ -57,7 +61,7 @@ export default function LogItems({ log, canDelete, onDelete }: LogItemsProps) {
                     <Button
                         size="icon"
                         variant="ghost"
-                        title="Eliminar log"
+                        title={t.logs.row.delete}
                         className="text-destructive hover:bg-destructive/10"
                         onClick={() => onDelete?.(log.id)}
                     >

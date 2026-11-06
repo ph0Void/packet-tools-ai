@@ -1,14 +1,19 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/action/SecureAction";
 import { getTopologyByIdAction } from "@/action/TopologyAction";
 import WorkspaceContainer from "@/component/workspace/WorkspaceContainer";
 import { parseTopologyJson } from "@/component/workspace/topology-json";
 import { notFound } from "next/navigation";
+import { getServerDictionary } from "@/i18n/server";
 
-export const metadata = {
-  title: "Packet Tools - Workspace",
-  description: "Editor de topología de red",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerDictionary();
+  return {
+    title: `Packet Tools - ${t.dashboard.metadata.workspaceDetail.title}`,
+    description: t.dashboard.metadata.workspaceDetail.description,
+  };
+}
 
 interface WorkspacePageProps {
   params: Promise<{

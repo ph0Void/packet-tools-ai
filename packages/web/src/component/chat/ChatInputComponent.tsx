@@ -13,7 +13,9 @@ import type { ChatAttachment } from "@/hooks/useCiscoChat";
 import { getConnectionDevices } from "@/service/TerminalSessionService";
 import { getSkillsParaMencion } from "@/service/client/SkillMentionService";
 import type { DeviceProvider } from "@/service/DeviceProviderService";
-import { toast } from "sonner";
+import { notifyError } from "@/lib/notify";
+import { interp } from "@/i18n/interp";
+import { useT } from "@/hooks/useT";
 
 import {
   PromptInput,
@@ -60,6 +62,7 @@ class EnvioNoRealizado extends Error {
 }
 
 function AttachButton() {
+  const t = useT();
   const attachments = usePromptInputAttachments();
 
   return (
@@ -67,7 +70,7 @@ function AttachButton() {
       <TooltipTrigger asChild>
         <button
           type="button"
-          aria-label="Adjuntar archivos"
+          aria-label={t.chat.input.attachAria}
           onClick={() => attachments.openFileDialog()}
           className="size-7 rounded-md cursor-pointer inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors duration-150"
         >
@@ -75,7 +78,7 @@ function AttachButton() {
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" className="text-xs">
-        Adjuntar imágenes o documentos ({MAX_ATTACHMENTS} máx.)
+        {interp(t.chat.input.attachTooltip, { max: MAX_ATTACHMENTS })}
       </TooltipContent>
     </Tooltip>
   );
@@ -86,6 +89,7 @@ interface ChatAgentSelectorProps {
 }
 
 export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
+  const t = useT();
   const {
     sendMessage,
     stop,
@@ -213,7 +217,7 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
       try {
         resultado = await sendMessage(text, attachments);
       } catch {
-        toast.error("Error al enviar el mensaje", { duration: Infinity });
+        notifyError(t.chat.input.sendError, { duration: Infinity });
         throw new EnvioNoRealizado("fallo de red");
       }
       if (!resultado.enviado) {
@@ -222,7 +226,7 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
 
       setTexto("");
     },
-    [isStreaming, sendMessage],
+    [isStreaming, sendMessage, t.chat.input.sendError],
   );
 
   return (
@@ -231,8 +235,7 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
         {continuationPending && !isStreaming && (
           <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
             <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
-              El turno se cortó al agotar el presupuesto de pasos. El progreso
-              queda guardado: puedes continuar desde donde se quedó.
+              {t.chat.input.continueNotice}
             </p>
             <button
               type="button"
@@ -241,7 +244,7 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
               className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors duration-150 hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <ArrowRight className="size-3.5" />
-              Continuar tarea
+              {t.chat.input.continueTask}
             </button>
           </div>
         )}
@@ -250,8 +253,7 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
           <p className="mb-2 flex items-center gap-1.5 text-xs leading-relaxed text-muted-foreground">
             <Ban className="size-3.5 shrink-0" />
             <span className="min-w-0">
-              Turno cancelado: se conserva lo que el agente ya respondió. Puedes
-              relanzarlo con «Reintentar», en esa misma respuesta.
+              {t.chat.input.cancelledNotice}
             </span>
           </p>
         )}
@@ -263,12 +265,16 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
             maxFiles={MAX_ATTACHMENTS}
             maxFileSize={MAX_ADJUNTO_BYTES}
             onError={(err) =>
-              toast.error(
+              notifyError(
                 err.code === "max_files"
-                  ? `Solo se pueden adjuntar ${MAX_ATTACHMENTS} archivos por mensaje.`
+                  ? interp(t.chat.input.maxFiles, { max: MAX_ATTACHMENTS })
                   : err.code === "max_file_size"
-                    ? `Cada archivo debe pesar como máximo ${Math.round(MAX_ADJUNTO_BYTES / (1024 * 1024))} MB.`
-                    : "Ese tipo de archivo no se admite: usa imágenes, PDF o texto.",
+                    ? interp(t.chat.input.maxFileSize, {
+                        size: Math.round(
+                          MAX_ADJUNTO_BYTES / (1024 * 1024),
+                        ),
+                      })
+                    : t.chat.input.unsupportedType,
               )
             }
             accept="image/*,application/pdf,text/plain,text/markdown,text/csv,application/json,.doc,.docx,.xls,.xlsx"
@@ -282,7 +288,7 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
               <PromptInputTextarea
                 ref={registrarTextarea}
                 value={texto}
-                placeholder="Escribe tu requerimiento de red. Usa @rag, @web, @skill o @dispositivo…"
+                placeholder={t.chat.input.placeholder}
                 className="max-h-[180px] min-h-[52px] resize-none bg-transparent px-4 pt-[11px] text-[13.5px] placeholder:text-muted-foreground"
                 onChange={manejarCambio}
                 onKeyDown={manejarTecla}
@@ -327,19 +333,19 @@ export function ChatInputComponent({ children }: ChatAgentSelectorProps) {
           <p className="flex items-center gap-1.5 px-1 pt-2 text-[11.5px] text-muted-foreground">
             <span className="hidden items-center gap-1.5 sm:inline-flex">
               <kbd className={CLASE_KBD}>Enter</kbd>
-              <span>enviar ·</span>
+              <span>{t.chat.input.hints.send}</span>
               <kbd className={CLASE_KBD}>Shift</kbd>
               <span>+</span>
               <kbd className={CLASE_KBD}>Enter</kbd>
-              <span>salto de línea ·</span>
+              <span>{t.chat.input.hints.newline}</span>
               <kbd className={CLASE_KBD}>@</kbd>
-              <span>menciones</span>
+              <span>{t.chat.input.hints.mentions}</span>
             </span>
             <span className="inline-flex items-center gap-1.5 sm:hidden">
               <kbd className={CLASE_KBD}>Enter</kbd>
-              <span>enviar ·</span>
+              <span>{t.chat.input.hints.send}</span>
               <kbd className={CLASE_KBD}>@</kbd>
-              <span>menciones</span>
+              <span>{t.chat.input.hints.mentions}</span>
             </span>
           </p>
         )}

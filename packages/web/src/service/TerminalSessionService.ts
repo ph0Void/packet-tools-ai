@@ -1,5 +1,12 @@
+import { getDictionary } from "@/i18n";
+import { LOCALE_COOKIE } from "@/i18n/types";
+import { interp } from "@/i18n/interp";
 import type { DeviceProvider } from "@/service/DeviceProviderService";
 import type { ApiResponse } from "@/service/client/ApiClient";
+
+const esEnglish = (): boolean =>
+  typeof document !== "undefined" &&
+  new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=en(?:;|$)`).test(document.cookie);
 
 export interface TerminalActiveSession {
   sessionId: string;
@@ -74,7 +81,11 @@ export async function confirmTerminalOpen(
       return {
         success: false,
         message:
-          json?.message || `Error ${res.status} al confirmar la apertura`,
+          json?.message ||
+          interp(
+            getDictionary(esEnglish() ? "en" : "es").forms.terminalConfirmError,
+            { status: res.status },
+          ),
         data: null,
       };
     }
@@ -82,7 +93,7 @@ export async function confirmTerminalOpen(
   } catch {
     return {
       success: false,
-      message: "No se pudo contactar con el servidor",
+      message: getDictionary(esEnglish() ? "en" : "es").errors.connectionError,
       data: null,
     };
   }
